@@ -1,0 +1,13 @@
+[package]
+name = "lmutils-r"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+crate-type = ["staticlib"]
+name = "lmutils"
+
+[dependencies]
+extendr-api = { version = "0.6.0", features = ["either"] }
+rayon = "1.10.0"
+lmutils = { version = "0.1", path = "../../../lmutils" }
