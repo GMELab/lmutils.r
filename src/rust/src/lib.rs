@@ -2,7 +2,7 @@ use core::panic;
 use std::{collections::HashSet, str::FromStr};
 
 use extendr_api::prelude::*;
-use lmutils::{IntoMatrix, Transform};
+use lmutils::Transform;
 use rayon::{iter::ParallelIterator, slice::ParallelSlice};
 
 /// Convert files from one format to another.
@@ -79,8 +79,10 @@ pub fn calculate_r2(data: Robj, outcomes: Robj) -> Result<Robj> {
     .into_robj())
 }
 
+const CALCULATE_R2_RANGES_DATA_MUST_BE: &str = "data must be a string file name or a matrix";
+
 /// Calculate R^2 and adjusted R^2 for ranges of a data matrix and outcomes.
-/// `data` is a string file namee or a matrix.
+/// `data` is a string file name or a matrix.
 /// `outcomes` is a string file name or a matrix.
 /// `ranges` is a matrix with 2 columns, the start and end columns to use (inclusive).
 /// Returns a data frame with columns `r2` and `adj_r2` corresponding to each outcome for each
@@ -104,7 +106,7 @@ pub fn calculate_r2_ranges(data: Robj, outcomes: Robj, ranges: RMatrix<u32>) -> 
             .expect("data is a matrix")
             .into())
     } else {
-        Err(CALCULATE_R2_DATA_MUST_BE.into())
+        Err(CALCULATE_R2_RANGES_DATA_MUST_BE.into())
     };
     let data = data?;
 
@@ -137,7 +139,8 @@ pub fn calculate_r2_ranges(data: Robj, outcomes: Robj, ranges: RMatrix<u32>) -> 
     .into_robj())
 }
 
-const COMBINE_MATRICES_DATA_MUST_BE: &str = "data must be a character vector or a list of matrices";
+const COMBINE_MATRICES_DATA_MUST_BE: &str =
+    "data must be a character vector of file names or a list of matrices";
 
 /// Combine matrices into a single matrix.
 /// `data` is a character vector of file names or a list of matrices.
@@ -186,24 +189,30 @@ pub fn combine_matrices(data: Robj, out: Nullable<&str>) -> Result<Nullable<Robj
     }
 }
 
+const REMOVE_ROWS_DATA_MUST_BE: &str = "data must be a string file name or a matrix";
+
 /// Remove rows from a matrix.
-/// `data` is a matrix.
+/// `data` is a character vector of file names, a list of matrices, or a single matrix.
 /// `rows` is a vector of row indices to remove.
 /// `out` is a file name to write the matrix with the rows removed to.
 /// If `out` is `NULL`, the matrix with the rows removed is returned otherwise `NULL`.
 #[extendr]
-pub fn remove_rows(
-    data: RMatrix<f64>,
-    rows: &[u32],
-    out: Nullable<&str>,
-) -> Result<Nullable<Robj>> {
+pub fn remove_rows(data: Robj, rows: &[u32], out: Nullable<&str>) -> Result<Nullable<Robj>> {
+    let data: Result<lmutils::Matrix> = if data.is_string() {
+        Ok(lmutils::File::from_str(data.as_str().expect("data is a string"))?.into())
+    } else if data.is_matrix() {
+        Ok(RMatrix::<f64>::try_from(data)
+            .expect("data is a matrix")
+            .into())
+    } else {
+        Err(REMOVE_ROWS_DATA_MUST_BE.into())
+    };
+    let data = data?;
     let out = match out {
         Null => None,
         NotNull(out) => Some(lmutils::File::from_str(out)?),
     };
-    let res = data
-        .into_matrix()
-        .remove_rows(&HashSet::from_iter(rows.iter().map(|i| *i as usize)))?;
+    let res = data.remove_rows(&HashSet::from_iter(rows.iter().map(|i| *i as usize)))?;
     if let Some(out) = out {
         out.write_matrix(&res.to_owned()?)?;
         Ok(Nullable::Null)
