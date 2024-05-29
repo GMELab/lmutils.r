@@ -3,26 +3,6 @@
 version = 3
 
 [[package]]
-name = "GSL"
-version = "7.0.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "db3943d5a15b5c46e991124abee6a1bc89c7c9ffb25dbb8aeb4eab926fd9b307"
-dependencies = [
- "GSL-sys",
- "paste",
-]
-
-[[package]]
-name = "GSL-sys"
-version = "3.0.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4577670dcc0720995dc39f04c438595eaae8ccc27f4aafd3e572dd408d01bd9d"
-dependencies = [
- "libc",
- "pkg-config",
-]
-
-[[package]]
 name = "adler"
 version = "1.0.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -590,7 +570,6 @@ checksum = "4ec2a862134d2a7d32d7983ddcdd1c4923530833c9f2ea1a44fc5fa473989058"
 name = "lmutils"
 version = "0.1.0"
 dependencies = [
- "GSL",
  "csv",
  "extendr-api",
  "faer",
@@ -799,12 +778,6 @@ dependencies = [
  "pest",
  "sha2",
 ]
-
-[[package]]
-name = "pkg-config"
-version = "0.3.30"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d231b230927b5e4ad203db57bbcbee2802f6bce620b1e4a9024a07d94e2907ec"
 
 [[package]]
 name = "proc-macro2"
