@@ -3,7 +3,7 @@
 \name{remove_rows}
 \alias{remove_rows}
 \title{Remove rows from a matrix.
-\code{data} is a matrix.
+\code{data} is a character vector of file names, a list of matrices, or a single matrix.
 \code{rows} is a vector of row indices to remove.
 \code{out} is a file name to write the matrix with the rows removed to.
 If \code{out} is \code{NULL}, the matrix with the rows removed is returned otherwise \code{NULL}.}
@@ -12,7 +12,7 @@ remove_rows(data, rows, out)
 }
 \description{
 Remove rows from a matrix.
-\code{data} is a matrix.
+\code{data} is a character vector of file names, a list of matrices, or a single matrix.
 \code{rows} is a vector of row indices to remove.
 \code{out} is a file name to write the matrix with the rows removed to.
 If \code{out} is \code{NULL}, the matrix with the rows removed is returned otherwise \code{NULL}.

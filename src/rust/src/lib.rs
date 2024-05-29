@@ -7,6 +7,7 @@ use rayon::{iter::ParallelIterator, slice::ParallelSlice};
 
 /// Convert files from one format to another.
 /// `from` and `to` must be character vectors of the same length.
+/// @export
 #[extendr]
 pub fn convert_files(from: &[Rstr], to: &[Rstr], item_type: lmutils::TransitoryType) -> Result<()> {
     if from.len() != to.len() {
@@ -28,6 +29,7 @@ const CALCULATE_R2_DATA_MUST_BE: &str =
 /// `outcomes` is a file name or a matrix.
 /// Returns a data frame with columns `r2` and `adj_r2` corresponding to each outcome for each
 /// block in order.
+/// @export
 #[extendr]
 pub fn calculate_r2(data: Robj, outcomes: Robj) -> Result<Robj> {
     let outcomes: Result<lmutils::Matrix> = if outcomes.is_string() {
@@ -87,6 +89,7 @@ const CALCULATE_R2_RANGES_DATA_MUST_BE: &str = "data must be a string file name 
 /// `ranges` is a matrix with 2 columns, the start and end columns to use (inclusive).
 /// Returns a data frame with columns `r2` and `adj_r2` corresponding to each outcome for each
 /// range in order.
+/// @export
 #[extendr]
 pub fn calculate_r2_ranges(data: Robj, outcomes: Robj, ranges: RMatrix<u32>) -> Result<Robj> {
     let outcomes: Result<lmutils::Matrix> = if outcomes.is_string() {
@@ -146,6 +149,7 @@ const COMBINE_MATRICES_DATA_MUST_BE: &str =
 /// `data` is a character vector of file names or a list of matrices.
 /// `out` is a file name to write the combined matrix to.
 /// If `out` is `NULL`, the combined matrix is returned otherwise `NULL`.
+/// @export
 #[extendr]
 pub fn combine_matrices(data: Robj, out: Nullable<&str>) -> Result<Nullable<Robj>> {
     let out = match out {
@@ -196,6 +200,7 @@ const REMOVE_ROWS_DATA_MUST_BE: &str = "data must be a string file name or a mat
 /// `rows` is a vector of row indices to remove.
 /// `out` is a file name to write the matrix with the rows removed to.
 /// If `out` is `NULL`, the matrix with the rows removed is returned otherwise `NULL`.
+/// @export
 #[extendr]
 pub fn remove_rows(data: Robj, rows: &[u32], out: Nullable<&str>) -> Result<Nullable<Robj>> {
     let data: Result<lmutils::Matrix> = if data.is_string() {

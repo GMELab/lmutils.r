@@ -13,6 +13,7 @@ NULL
 
 #' Convert files from one format to another.
 #' `from` and `to` must be character vectors of the same length.
+#' @export
 convert_files <- function(from, to, item_type) .Call(wrap__convert_files, from, to, item_type)
 
 #' Calculate R^2 and adjusted R^2 for a block and outcomes.
@@ -20,27 +21,31 @@ convert_files <- function(from, to, item_type) .Call(wrap__convert_files, from, 
 #' `outcomes` is a file name or a matrix.
 #' Returns a data frame with columns `r2` and `adj_r2` corresponding to each outcome for each
 #' block in order.
+#' @export
 calculate_r2 <- function(data, outcomes) .Call(wrap__calculate_r2, data, outcomes)
 
 #' Calculate R^2 and adjusted R^2 for ranges of a data matrix and outcomes.
-#' `data` is a string file namee or a matrix.
+#' `data` is a string file name or a matrix.
 #' `outcomes` is a string file name or a matrix.
 #' `ranges` is a matrix with 2 columns, the start and end columns to use (inclusive).
 #' Returns a data frame with columns `r2` and `adj_r2` corresponding to each outcome for each
 #' range in order.
+#' @export
 calculate_r2_ranges <- function(data, outcomes, ranges) .Call(wrap__calculate_r2_ranges, data, outcomes, ranges)
 
 #' Combine matrices into a single matrix.
 #' `data` is a character vector of file names or a list of matrices.
 #' `out` is a file name to write the combined matrix to.
 #' If `out` is `NULL`, the combined matrix is returned otherwise `NULL`.
+#' @export
 combine_matrices <- function(data, out) .Call(wrap__combine_matrices, data, out)
 
 #' Remove rows from a matrix.
-#' `data` is a matrix.
+#' `data` is a character vector of file names, a list of matrices, or a single matrix.
 #' `rows` is a vector of row indices to remove.
 #' `out` is a file name to write the matrix with the rows removed to.
 #' If `out` is `NULL`, the matrix with the rows removed is returned otherwise `NULL`.
+#' @export
 remove_rows <- function(data, rows, out) .Call(wrap__remove_rows, data, rows, out)
 
 

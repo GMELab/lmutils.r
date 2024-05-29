@@ -3,7 +3,7 @@
 \name{calculate_r2_ranges}
 \alias{calculate_r2_ranges}
 \title{Calculate R^2 and adjusted R^2 for ranges of a data matrix and outcomes.
-\code{data} is a string file namee or a matrix.
+\code{data} is a string file name or a matrix.
 \code{outcomes} is a string file name or a matrix.
 \code{ranges} is a matrix with 2 columns, the start and end columns to use (inclusive).
 Returns a data frame with columns \code{r2} and \code{adj_r2} corresponding to each outcome for each
@@ -13,7 +13,7 @@ calculate_r2_ranges(data, outcomes, ranges)
 }
 \description{
 Calculate R^2 and adjusted R^2 for ranges of a data matrix and outcomes.
-\code{data} is a string file namee or a matrix.
+\code{data} is a string file name or a matrix.
 \code{outcomes} is a string file name or a matrix.
 \code{ranges} is a matrix with 2 columns, the start and end columns to use (inclusive).
 Returns a data frame with columns \code{r2} and \code{adj_r2} corresponding to each outcome for each
