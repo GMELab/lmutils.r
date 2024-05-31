@@ -10,4 +10,5 @@ name = "lmutils"
 [dependencies]
 extendr-api = { version = "0.6.0", features = ["either"] }
 rayon = "1.10.0"
-lmutils = { version = "0.1", path = "../../../lmutils" }
+# lmutils = { version = "0.1", path = "../../../lmutils" }
+lmutils = "0.1"
