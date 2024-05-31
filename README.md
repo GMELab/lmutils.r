@@ -6,6 +6,8 @@ Requires the [Rust programming language](https://rust-lang.org).
 
 ```r
 devtools::install_github("mrvillage/lmutils.r")
+# OR
+install.packages("https://github.com/mrvillage/lmutils.r/archive/refs/heads/master.tar.gz", repos=NULL) # use .zip for Windows
 ```
 
 ## Important Notes
