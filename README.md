@@ -37,7 +37,7 @@ All files can be optionally compressed with `gzip`, `rdata` files are assumed to
 lmutils::convert_files(
     c("file1.csv", "file2.RData"),
     c("file1.json", "file2.rkyv.gz"),
-    0 # 0 means read as a matrix of floats, 1 means read as a matrix of strings
+    0L # 0L means read as a matrix of floats, 1L means read as a matrix of strings
 )
 ```
 
