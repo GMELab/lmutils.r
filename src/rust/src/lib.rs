@@ -197,7 +197,7 @@ const REMOVE_ROWS_DATA_MUST_BE: &str = "data must be a string file name or a mat
 
 /// Remove rows from a matrix.
 /// `data` is a character vector of file names, a list of matrices, or a single matrix.
-/// `rows` is a vector of row indices to remove.
+/// `rows` is a vector of row indices to remove (1-based).
 /// `out` is a file name to write the matrix with the rows removed to.
 /// If `out` is `NULL`, the matrix with the rows removed is returned otherwise `NULL`.
 /// @export
@@ -217,7 +217,7 @@ pub fn remove_rows(data: Robj, rows: &[u32], out: Nullable<&str>) -> Result<Null
         Null => None,
         NotNull(out) => Some(lmutils::File::from_str(out)?),
     };
-    let res = data.remove_rows(&HashSet::from_iter(rows.iter().map(|i| *i as usize)))?;
+    let res = data.remove_rows(&HashSet::from_iter(rows.iter().map(|i| (i - 1) as usize)))?;
     if let Some(out) = out {
         out.write_matrix(&res.to_owned()?)?;
         Ok(Nullable::Null)
