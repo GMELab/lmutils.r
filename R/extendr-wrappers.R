@@ -42,11 +42,23 @@ combine_matrices <- function(data, out) .Call(wrap__combine_matrices, data, out)
 
 #' Remove rows from a matrix.
 #' `data` is a character vector of file names, a list of matrices, or a single matrix.
-#' `rows` is a vector of row indices to remove.
+#' `rows` is a vector of row indices to remove (1-based).
 #' `out` is a file name to write the matrix with the rows removed to.
 #' If `out` is `NULL`, the matrix with the rows removed is returned otherwise `NULL`.
 #' @export
 remove_rows <- function(data, rows, out) .Call(wrap__remove_rows, data, rows, out)
+
+#' Save a matrix to a file.
+#' `mat` must be a double matrix.
+#' `out` is the name of the file to save to.
+#' @export
+save_matrix <- function(mat, out) .Call(wrap__save_matrix, mat, out)
+
+#' Convert a data frame to a file.
+#' `df` must be a numeric data frame.
+#' `out` is the name of the file to save to.
+#' @export
+df_to_matrix_file <- function(df, out) .Call(wrap__df_to_matrix_file, df, out)
 
 
 # nolint end

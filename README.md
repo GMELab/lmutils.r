@@ -114,3 +114,34 @@ lmutils::remove_rows(
     "matrix1_removed_rows.csv",
 )
 ```
+
+
+### `lmutils::save_matrix`
+
+Saves a matrix to a file.
+
+The first argument is a matrix to save.
+
+The second argument is a string file name to save the matrix to.
+
+```r
+lmutils::save_matrix(
+    matrix(1:9, nrow=3),
+    "matrix1.csv",
+)
+```
+
+### `lmutils::df_to_matrix_file`
+
+Saves a data frame to a matrix file.
+
+The first argument is a data frame to save.
+
+The second argument is a string file name to save the matrix to.
+
+```r
+lmutils::df_to_matrix_file(
+    data.frame(a=1:3, b=4:6),
+    "matrix1.csv",
+)
+```

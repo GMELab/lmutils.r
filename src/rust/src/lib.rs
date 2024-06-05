@@ -2,7 +2,7 @@ use core::panic;
 use std::{collections::HashSet, str::FromStr};
 
 use extendr_api::prelude::*;
-use lmutils::Transform;
+use lmutils::{File, Matrix, Transform};
 use rayon::{iter::ParallelIterator, slice::ParallelSlice};
 
 /// Convert files from one format to another.
@@ -226,6 +226,31 @@ pub fn remove_rows(data: Robj, rows: &[u32], out: Nullable<&str>) -> Result<Null
     }
 }
 
+/// Save a matrix to a file.
+/// `mat` must be a double matrix.
+/// `out` is the name of the file to save to.
+/// @export
+#[extendr]
+pub fn save_matrix(mat: RMatrix<f64>, out: &str) -> Result<()> {
+    Ok(File::from_str(out)?.write_matrix(&Matrix::from(mat).to_owned()?)?)
+}
+
+/// Convert a data frame to a file.
+/// `df` must be a numeric data frame.
+/// `out` is the name of the file to save to.
+/// @export
+#[extendr]
+pub fn df_to_matrix_file(df: Robj, out: &str) -> Result<()> {
+    Ok(File::from_str(out)?.write_matrix(
+        &Matrix::from(
+            R!("as.matrix(sapply({{df}}, as.double))")?
+                .as_matrix()
+                .unwrap(),
+        )
+        .to_owned()?,
+    )?)
+}
+
 // Macro to generate exports.
 // This ensures exported functions are registered with R.
 // See corresponding C code in `entrypoint.c`.
@@ -236,4 +261,6 @@ extendr_module! {
     fn calculate_r2_ranges;
     fn combine_matrices;
     fn remove_rows;
+    fn save_matrix;
+    fn df_to_matrix_file;
 }
