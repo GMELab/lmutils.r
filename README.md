@@ -145,3 +145,20 @@ lmutils::df_to_matrix_file(
     "matrix1.csv",
 )
 ```
+
+### `lmutils::crossprod`
+
+Calculates the cross product of two matrices. Equivalent to `t(data) %*% data`.
+
+The first argument is a string file name or a matrix to read the matrix from.
+
+The second argument is a string file name to save the matrix to.
+
+If the second argument is `NULL`, the function will return the cross product matrix.
+
+```r
+lmutils::crossprod(
+    "matrix1.csv",
+    "crossprod_matrix1.csv",
+)
+```

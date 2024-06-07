@@ -2,7 +2,7 @@ use core::panic;
 use std::{collections::HashSet, str::FromStr};
 
 use extendr_api::prelude::*;
-use lmutils::{File, Matrix, Transform};
+use lmutils::{File, Matrix, ToRMatrix, Transform};
 use rayon::{iter::ParallelIterator, slice::ParallelSlice};
 
 /// Convert files from one format to another.
@@ -193,7 +193,19 @@ pub fn combine_matrices(data: Robj, out: Nullable<&str>) -> Result<Nullable<Robj
     }
 }
 
-const REMOVE_ROWS_DATA_MUST_BE: &str = "data must be a string file name or a matrix";
+const DATA_MUST_BE_FILE_NAME_OR_MATRIX: &str = "data must be a string file name or a matrix";
+
+fn file_or_matrix(data: Robj) -> Result<lmutils::Matrix<'static>> {
+    if data.is_string() {
+        Ok(lmutils::File::from_str(data.as_str().expect("data is a string"))?.into())
+    } else if data.is_matrix() {
+        Ok(RMatrix::<f64>::try_from(data)
+            .expect("data is a matrix")
+            .into())
+    } else {
+        Err(DATA_MUST_BE_FILE_NAME_OR_MATRIX.into())
+    }
+}
 
 /// Remove rows from a matrix.
 /// `data` is a character vector of file names, a list of matrices, or a single matrix.
@@ -203,16 +215,7 @@ const REMOVE_ROWS_DATA_MUST_BE: &str = "data must be a string file name or a mat
 /// @export
 #[extendr]
 pub fn remove_rows(data: Robj, rows: &[u32], out: Nullable<&str>) -> Result<Nullable<Robj>> {
-    let data: Result<lmutils::Matrix> = if data.is_string() {
-        Ok(lmutils::File::from_str(data.as_str().expect("data is a string"))?.into())
-    } else if data.is_matrix() {
-        Ok(RMatrix::<f64>::try_from(data)
-            .expect("data is a matrix")
-            .into())
-    } else {
-        Err(REMOVE_ROWS_DATA_MUST_BE.into())
-    };
-    let data = data?;
+    let data = file_or_matrix(data)?;
     let out = match out {
         Null => None,
         NotNull(out) => Some(lmutils::File::from_str(out)?),
@@ -249,6 +252,23 @@ pub fn df_to_matrix_file(df: Robj, out: &str) -> Result<()> {
         )
         .to_owned()?,
     )?)
+}
+
+/// Computes the cross product of the matrix. Equivalent to `t(data) %*% data`.
+/// `data` must be a string file name or a matrix.
+/// `out` is the name of the file to save to.
+/// If `out` is `NULL`, the cross product is returned otherwise `NULL`.
+/// @export
+#[extendr]
+pub fn crossprod(data: Robj, out: Nullable<&str>) -> Result<Nullable<RMatrix<f64>>> {
+    let data = file_or_matrix(data)?;
+    let mat = lmutils::cross_product(data.as_mat_ref()?);
+    if let NotNull(out) = out {
+        File::from_str(out)?.write_matrix(&mat)?;
+        Ok(Nullable::Null)
+    } else {
+        Ok(Nullable::NotNull(mat.to_rmatrix()?))
+    }
 }
 
 // Macro to generate exports.
