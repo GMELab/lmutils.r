@@ -262,12 +262,13 @@ pub fn df_to_matrix_file(df: Robj, out: &str) -> Result<()> {
 #[extendr]
 pub fn crossprod(data: Robj, out: Nullable<&str>) -> Result<Nullable<RMatrix<f64>>> {
     let data = file_or_matrix(data)?;
-    let mat = lmutils::cross_product(data.as_mat_ref()?);
+    let mut mat = lmutils::cross_product(data.as_mat_ref()?);
+    let mat = Matrix::Ref(mat.as_mut()).to_owned()?;
     if let NotNull(out) = out {
         File::from_str(out)?.write_matrix(&mat)?;
         Ok(Nullable::Null)
     } else {
-        Ok(Nullable::NotNull(mat.to_rmatrix()?))
+        Ok(Nullable::NotNull(mat.to_rmatrix()))
     }
 }
 
