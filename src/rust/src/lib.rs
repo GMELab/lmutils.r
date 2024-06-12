@@ -1,7 +1,7 @@
 use core::panic;
-use std::{collections::HashSet, str::FromStr};
+use std::{collections::HashSet, io::Read, str::FromStr};
 
-use extendr_api::prelude::*;
+use extendr_api::{io::Load, prelude::*};
 use lmutils::{File, Matrix, ToRMatrix, Transform};
 use rayon::{iter::ParallelIterator, slice::ParallelSlice};
 
@@ -272,6 +272,25 @@ pub fn crossprod(data: Robj, out: Nullable<&str>) -> Result<Nullable<RMatrix<f64
     }
 }
 
+/// Convert an RData file to a matrix file.
+/// `data` is the name of the RData file.
+/// `out` is the name of the file to save to.
+/// @export
+#[extendr]
+pub fn rdata_to_matrix(data: &str, out: &str) -> Result<()> {
+    let mut reader =
+        flate2::read::GzDecoder::new(std::io::BufReader::new(std::fs::File::open(data).unwrap()));
+    let mut buf = [0; 5];
+    reader.read_exact(&mut buf).unwrap();
+    if buf != *b"RDX3\n" {
+        return Err("invalid RData file".into());
+    }
+    let obj =
+        Robj::from_reader(&mut reader, extendr_api::io::PstreamFormat::XdrFormat, None).unwrap();
+    let obj = obj.as_pairlist().unwrap().into_iter().next().unwrap().1;
+    df_to_matrix_file(obj, out)
+}
+
 // Macro to generate exports.
 // This ensures exported functions are registered with R.
 // See corresponding C code in `entrypoint.c`.
@@ -284,4 +303,5 @@ extendr_module! {
     fn remove_rows;
     fn save_matrix;
     fn df_to_matrix_file;
+    fn rdata_to_matrix;
 }

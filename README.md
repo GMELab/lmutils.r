@@ -162,3 +162,20 @@ lmutils::crossprod(
     "crossprod_matrix1.csv",
 )
 ```
+
+### `lmutils::rdata_to_matrix`
+
+Reads an RData file and converts it into a valid matrix.
+
+The first argument is a string file name to read the RData file from.
+
+The second argument is a string file name to write the matrix to.
+
+If the second argument is `NULL`, the function will return the matrix.
+
+```r
+lmutils::rdata_to_matrix(
+    "matrix1.RData",
+    "matrix1.csv",
+)
+```

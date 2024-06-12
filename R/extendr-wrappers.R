@@ -60,5 +60,11 @@ save_matrix <- function(mat, out) .Call(wrap__save_matrix, mat, out)
 #' @export
 df_to_matrix_file <- function(df, out) .Call(wrap__df_to_matrix_file, df, out)
 
+#' Convert an RData file to a matrix file.
+#' `data` is the name of the RData file.
+#' `out` is the name of the file to save to.
+#' @export
+rdata_to_matrix <- function(data, out) .Call(wrap__rdata_to_matrix, data, out)
+
 
 # nolint end
