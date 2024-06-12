@@ -239,19 +239,36 @@ pub fn save_matrix(mat: RMatrix<f64>, out: &str) -> Result<()> {
 }
 
 /// Convert a data frame to a file.
-/// `df` must be a numeric data frame.
+/// `df` must be a numeric data frame, numeric matrix, or a string RData file name.
 /// `out` is the name of the file to save to.
+/// If `out` is `NULL`, the matrix is returned otherwise `NULL`.
 /// @export
 #[extendr]
-pub fn df_to_matrix_file(df: Robj, out: &str) -> Result<()> {
-    Ok(File::from_str(out)?.write_matrix(
-        &Matrix::from(
-            R!("as.matrix(sapply({{df}}, as.double))")?
-                .as_matrix()
-                .unwrap(),
-        )
-        .to_owned()?,
-    )?)
+pub fn to_matrix(df: Robj, out: Nullable<&str>) -> Result<Nullable<RMatrix<f64>>> {
+    if df.is_string() {
+        let mut reader = flate2::read::GzDecoder::new(std::io::BufReader::new(
+            std::fs::File::open(df.as_str().unwrap()).unwrap(),
+        ));
+        let mut buf = [0; 5];
+        reader.read_exact(&mut buf).unwrap();
+        if buf != *b"RDX3\n" {
+            return Err("invalid RData file".into());
+        }
+        let obj = Robj::from_reader(&mut reader, extendr_api::io::PstreamFormat::XdrFormat, None)
+            .unwrap();
+        let obj = obj.as_pairlist().unwrap().into_iter().next().unwrap().1;
+        to_matrix(obj, out)
+    } else {
+        let matrix = R!("as.matrix(sapply({{df}}, as.double))")?
+            .as_matrix()
+            .unwrap();
+        if let NotNull(out) = out {
+            save_matrix(matrix, out)?;
+            Ok(Nullable::Null)
+        } else {
+            Ok(Nullable::NotNull(matrix))
+        }
+    }
 }
 
 /// Computes the cross product of the matrix. Equivalent to `t(data) %*% data`.
@@ -272,25 +289,6 @@ pub fn crossprod(data: Robj, out: Nullable<&str>) -> Result<Nullable<RMatrix<f64
     }
 }
 
-/// Convert an RData file to a matrix file.
-/// `data` is the name of the RData file.
-/// `out` is the name of the file to save to.
-/// @export
-#[extendr]
-pub fn rdata_to_matrix(data: &str, out: &str) -> Result<()> {
-    let mut reader =
-        flate2::read::GzDecoder::new(std::io::BufReader::new(std::fs::File::open(data).unwrap()));
-    let mut buf = [0; 5];
-    reader.read_exact(&mut buf).unwrap();
-    if buf != *b"RDX3\n" {
-        return Err("invalid RData file".into());
-    }
-    let obj =
-        Robj::from_reader(&mut reader, extendr_api::io::PstreamFormat::XdrFormat, None).unwrap();
-    let obj = obj.as_pairlist().unwrap().into_iter().next().unwrap().1;
-    df_to_matrix_file(obj, out)
-}
-
 // Macro to generate exports.
 // This ensures exported functions are registered with R.
 // See corresponding C code in `entrypoint.c`.
@@ -302,6 +300,5 @@ extendr_module! {
     fn combine_matrices;
     fn remove_rows;
     fn save_matrix;
-    fn df_to_matrix_file;
-    fn rdata_to_matrix;
+    fn to_matrix;
 }

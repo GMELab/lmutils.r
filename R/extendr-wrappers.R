@@ -55,16 +55,11 @@ remove_rows <- function(data, rows, out) .Call(wrap__remove_rows, data, rows, ou
 save_matrix <- function(mat, out) .Call(wrap__save_matrix, mat, out)
 
 #' Convert a data frame to a file.
-#' `df` must be a numeric data frame.
+#' `df` must be a numeric data frame, numeric matrix, or a string RData file name.
 #' `out` is the name of the file to save to.
+#' If `out` is `NULL`, the matrix is returned otherwise `NULL`.
 #' @export
-df_to_matrix_file <- function(df, out) .Call(wrap__df_to_matrix_file, df, out)
-
-#' Convert an RData file to a matrix file.
-#' `data` is the name of the RData file.
-#' `out` is the name of the file to save to.
-#' @export
-rdata_to_matrix <- function(data, out) .Call(wrap__rdata_to_matrix, data, out)
+to_matrix <- function(df, out) .Call(wrap__to_matrix, df, out)
 
 
 # nolint end

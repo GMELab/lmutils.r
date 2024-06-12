@@ -131,18 +131,28 @@ lmutils::save_matrix(
 )
 ```
 
-### `lmutils::df_to_matrix_file`
+### `lmutils::to_matrix`
 
-Saves a data frame to a matrix file.
+Converts a numeric data frame, numeric matrix, or RData file to a matrix.
 
-The first argument is a data frame to save.
+The first argument is the data frame, matrix, or file name to convert.
 
 The second argument is a string file name to save the matrix to.
 
+If the second argument is `NULL`, the function will return the matrix.
+
 ```r
-lmutils::df_to_matrix_file(
+lmutils::to_matrix(
     data.frame(a=1:3, b=4:6),
     "matrix1.csv",
+)
+lmutils::to_matrix(
+    matrix(1:9, nrow=3),
+    "matrix2.csv",
+)
+lmutils::to_matrix(
+    "matrix1.RData",
+    "matrix3.csv",
 )
 ```
 
@@ -160,22 +170,5 @@ If the second argument is `NULL`, the function will return the cross product mat
 lmutils::crossprod(
     "matrix1.csv",
     "crossprod_matrix1.csv",
-)
-```
-
-### `lmutils::rdata_to_matrix`
-
-Reads an RData file and converts it into a valid matrix.
-
-The first argument is a string file name to read the RData file from.
-
-The second argument is a string file name to write the matrix to.
-
-If the second argument is `NULL`, the function will return the matrix.
-
-```r
-lmutils::rdata_to_matrix(
-    "matrix1.RData",
-    "matrix1.csv",
 )
 ```
