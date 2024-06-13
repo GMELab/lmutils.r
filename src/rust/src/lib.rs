@@ -2,6 +2,7 @@ use core::panic;
 use std::{collections::HashSet, io::Read, str::FromStr};
 
 use extendr_api::{io::Load, prelude::*};
+use faer::{Mat, MatMut};
 use lmutils::{File, Matrix, ToRMatrix, Transform};
 use rayon::{iter::ParallelIterator, slice::ParallelSlice};
 
@@ -27,8 +28,7 @@ const CALCULATE_R2_DATA_MUST_BE: &str =
 /// Calculate R^2 and adjusted R^2 for a block and outcomes.
 /// `data` is a character vector of file names, a list of matrices, or a single matrix.
 /// `outcomes` is a file name or a matrix.
-/// Returns a data frame with columns `r2` and `adj_r2` corresponding to each outcome for each
-/// block in order.
+/// Returns a data frame with columns `r2`, `adj_r2`, `data`, and `outcome`.
 /// @export
 #[extendr]
 pub fn calculate_r2(data: Robj, outcomes: Robj) -> Result<Robj> {
@@ -42,17 +42,23 @@ pub fn calculate_r2(data: Robj, outcomes: Robj) -> Result<Robj> {
         Err("outcomes must be a string or a matrix".into())
     };
     let outcomes = outcomes?;
-    let data: Result<Vec<lmutils::Matrix>> = if data.is_list() {
+    let data: Result<Vec<(&str, lmutils::Matrix)>> = if data.is_list() {
         let data = data.as_list().expect("data is a list");
         if data.len() == 0 {
             return Err(CALCULATE_R2_DATA_MUST_BE.into());
         }
         data.into_iter()
-            .map(|(_, i)| {
+            .map(|(x, i)| {
                 if i.is_matrix() {
-                    Ok(RMatrix::<f64>::try_from(i).expect("i is a matrix").into())
+                    Ok((
+                        x,
+                        RMatrix::<f64>::try_from(i).expect("i is a matrix").into(),
+                    ))
                 } else if i.is_string() {
-                    Ok(lmutils::File::from_str(i.as_str().expect("i is a string"))?.into())
+                    Ok((
+                        i.as_str().unwrap(),
+                        lmutils::File::from_str(i.as_str().expect("i is a string"))?.into(),
+                    ))
                 } else {
                     Err(CALCULATE_R2_DATA_MUST_BE.into())
                 }
@@ -61,22 +67,30 @@ pub fn calculate_r2(data: Robj, outcomes: Robj) -> Result<Robj> {
     } else if data.is_string() {
         let data = data.as_str_vector().expect("data is a string vector");
         data.into_iter()
-            .map(|i| Ok(lmutils::File::from_str(i)?.into()))
+            .map(|i| Ok((i, lmutils::File::from_str(i)?.into())))
             .collect()
     } else if data.is_matrix() {
-        let data = RMatrix::<f64>::try_from(data)
-            .expect("data is a matrix")
-            .into();
+        let data = (
+            "1",
+            RMatrix::<f64>::try_from(data)
+                .expect("data is a matrix")
+                .into(),
+        );
         Ok(vec![data])
     } else {
         Err(CALCULATE_R2_DATA_MUST_BE.into())
     };
     let data = data?;
+    let data_names = data.iter().map(|(x, _)| x.to_string()).collect::<Vec<_>>();
+    let data_names = data_names.iter().map(|x| x.as_str()).collect::<Vec<_>>();
+    let data = data.into_iter().map(|(_, i)| i).collect::<Vec<_>>();
 
-    let res = lmutils::calculate_r2s(data, outcomes)?;
+    let res = lmutils::calculate_r2s(data, outcomes, Some(data_names))?;
     Ok(data_frame!(
         r2 = res.iter().map(|r| r.r2()).collect::<Vec<_>>(),
-        adj_r2 = res.iter().map(|r| r.adj_r2()).collect::<Vec<_>>()
+        adj_r2 = res.iter().map(|r| r.adj_r2()).collect::<Vec<_>>(),
+        data = res.iter().map(|r| r.data()).collect::<Vec<_>>(),
+        outcome = res.iter().map(|r| r.outcome()).collect::<Vec<_>>()
     )
     .into_robj())
 }
@@ -87,8 +101,7 @@ const CALCULATE_R2_RANGES_DATA_MUST_BE: &str = "data must be a string file name 
 /// `data` is a string file name or a matrix.
 /// `outcomes` is a string file name or a matrix.
 /// `ranges` is a matrix with 2 columns, the start and end columns to use (inclusive).
-/// Returns a data frame with columns `r2` and `adj_r2` corresponding to each outcome for each
-/// range in order.
+/// Returns a data frame with columns `r2`, `adj_r2`, and `outcome` corresponding to each range.
 /// @export
 #[extendr]
 pub fn calculate_r2_ranges(data: Robj, outcomes: Robj, ranges: RMatrix<u32>) -> Result<Robj> {
@@ -122,18 +135,25 @@ pub fn calculate_r2_ranges(data: Robj, outcomes: Robj, ranges: RMatrix<u32>) -> 
 
     let data = data.transform()?;
     let data = data.as_mat_ref()?;
-    let outcomes = outcomes.transform()?;
-    let outcomes = outcomes.as_mat_ref()?;
-    let res = ranges
+    let data = ranges
         .data()
         .par_chunks_exact(2)
-        .flat_map(|i| {
+        .map(|i| {
             let start = i[0] as usize;
             let end = i[1] as usize;
-            let data = data.get(.., start..=end);
-            lmutils::get_r2s(data, outcomes)
+            let r = data.get(.., start..=end);
+            Matrix::Ref(unsafe {
+                faer::mat::from_raw_parts_mut(
+                    r.as_ptr() as *mut f64,
+                    r.nrows(),
+                    r.ncols(),
+                    r.row_stride(),
+                    r.col_stride(),
+                )
+            })
         })
         .collect::<Vec<_>>();
+    let res = lmutils::calculate_r2s(data, outcomes, None)?;
 
     Ok(data_frame!(
         r2 = res.iter().map(|r| r.r2()).collect::<Vec<_>>(),

@@ -5,8 +5,7 @@
 \title{Calculate R^2 and adjusted R^2 for a block and outcomes.
 \code{data} is a character vector of file names, a list of matrices, or a single matrix.
 \code{outcomes} is a file name or a matrix.
-Returns a data frame with columns \code{r2} and \code{adj_r2} corresponding to each outcome for each
-block in order.}
+Returns a data frame with columns \code{r2}, \code{adj_r2}, \code{data}, and \code{outcome}.}
 \usage{
 calculate_r2(data, outcomes)
 }
@@ -14,6 +13,5 @@ calculate_r2(data, outcomes)
 Calculate R^2 and adjusted R^2 for a block and outcomes.
 \code{data} is a character vector of file names, a list of matrices, or a single matrix.
 \code{outcomes} is a file name or a matrix.
-Returns a data frame with columns \code{r2} and \code{adj_r2} corresponding to each outcome for each
-block in order.
+Returns a data frame with columns \code{r2}, \code{adj_r2}, \code{data}, and \code{outcome}.
 }

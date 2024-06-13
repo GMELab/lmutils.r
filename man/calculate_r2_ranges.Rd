@@ -6,8 +6,7 @@
 \code{data} is a string file name or a matrix.
 \code{outcomes} is a string file name or a matrix.
 \code{ranges} is a matrix with 2 columns, the start and end columns to use (inclusive).
-Returns a data frame with columns \code{r2} and \code{adj_r2} corresponding to each outcome for each
-range in order.}
+Returns a data frame with columns \code{r2}, \code{adj_r2}, and \code{outcome} corresponding to each range.}
 \usage{
 calculate_r2_ranges(data, outcomes, ranges)
 }
@@ -16,6 +15,5 @@ Calculate R^2 and adjusted R^2 for ranges of a data matrix and outcomes.
 \code{data} is a string file name or a matrix.
 \code{outcomes} is a string file name or a matrix.
 \code{ranges} is a matrix with 2 columns, the start and end columns to use (inclusive).
-Returns a data frame with columns \code{r2} and \code{adj_r2} corresponding to each outcome for each
-range in order.
+Returns a data frame with columns \code{r2}, \code{adj_r2}, and \code{outcome} corresponding to each range.
 }

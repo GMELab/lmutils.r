@@ -19,8 +19,7 @@ convert_files <- function(from, to, item_type) .Call(wrap__convert_files, from, 
 #' Calculate R^2 and adjusted R^2 for a block and outcomes.
 #' `data` is a character vector of file names, a list of matrices, or a single matrix.
 #' `outcomes` is a file name or a matrix.
-#' Returns a data frame with columns `r2` and `adj_r2` corresponding to each outcome for each
-#' block in order.
+#' Returns a data frame with columns `r2`, `adj_r2`, `data`, and `outcome`.
 #' @export
 calculate_r2 <- function(data, outcomes) .Call(wrap__calculate_r2, data, outcomes)
 
@@ -28,8 +27,7 @@ calculate_r2 <- function(data, outcomes) .Call(wrap__calculate_r2, data, outcome
 #' `data` is a string file name or a matrix.
 #' `outcomes` is a string file name or a matrix.
 #' `ranges` is a matrix with 2 columns, the start and end columns to use (inclusive).
-#' Returns a data frame with columns `r2` and `adj_r2` corresponding to each outcome for each
-#' range in order.
+#' Returns a data frame with columns `r2`, `adj_r2`, and `outcome` corresponding to each range.
 #' @export
 calculate_r2_ranges <- function(data, outcomes, ranges) .Call(wrap__calculate_r2_ranges, data, outcomes, ranges)
 

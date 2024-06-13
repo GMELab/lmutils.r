@@ -49,7 +49,7 @@ The first argument is a character vector of file names to read the blocks from, 
 
 The second argument is a single file name or matrix to use as the outcomes. Each outcome is a column in the matrix.
 
-The function returns a data frame with columns `r2` and `adj_r2` corresponding to each outcome for each block in order.
+The function returns a data frame with columns `r2`, `adj_r2`, `data`, and `outcome`.
 
 ```r
 results <- lmutils::calculate_r2(
@@ -68,7 +68,7 @@ The second argument is a single file name or matrix to use as the outcomes. Each
 
 The third argument is a matrix with two columns, the start and end columns to use (inclusive).
 
-The function returns a data frame with columns `r2` and `adj_r2` corresponding to each outcome for each block in order.
+The function returns a data frame with columns `r2`, `adj_r2`, and `outcome` corresponding to each range in order.
 
 ```r
 results <- lmutils::calculate_r2_ranges(
