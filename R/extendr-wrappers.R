@@ -14,6 +14,11 @@ NULL
 #' Convert files from one format to another.
 #' `from` and `to` must be character vectors of the same length.
 #' @export
+convert_file <- function(from, to) .Call(wrap__convert_file, from, to)
+
+#' Convert files from one format to another.
+#' `from` and `to` must be character vectors of the same length.
+#' @export
 convert_files <- function(from, to, item_type) .Call(wrap__convert_files, from, to, item_type)
 
 #' Calculate R^2 and adjusted R^2 for a block and outcomes.
@@ -66,20 +71,30 @@ to_matrix <- function(df, out) .Call(wrap__to_matrix, df, out)
 #' @export
 crossprod <- function(data, out) .Call(wrap__crossprod, data, out)
 
+#' Converts a directory of RData files to matrices.
+#' `from` is the directory to read from.
+#' `to` is the directory to write to.
+#' `file_type` is the file extension to write as.
+#' If `to` is `NULL`, the files are written to `from`.
+#' @export
+to_matrix_dir <- function(from, to, file_type) .Call(wrap__to_matrix_dir, from, to, file_type)
+
 #' Set the log level.
 #' `level` is the log level.
 #' @export
 set_log_level <- function(level) invisible(.Call(wrap__set_log_level, level))
 
-#' Set the number of blocks to process at once.
-#' `blocks_per_chunk` is the number of blocks to process at once.
+#' Set the number of main threads to use.
+#' This is the number of primary operations to perform at once.
+#' `num` is the number of main threads.
 #' @export
-set_blocks_at_once <- function(blocks_per_chunk) invisible(.Call(wrap__set_blocks_at_once, blocks_per_chunk))
+set_num_main_threads <- function(num) invisible(.Call(wrap__set_num_main_threads, num))
 
-#' Set the number of threads.
-#' `num_threads` is the number of threads.
+#' Set the number of worker threads to use.
+#' This is the number of threads to use for parallel operations.
+#' `num` is the number of worker threads.
 #' @export
-set_num_threads <- function(num_threads) invisible(.Call(wrap__set_num_threads, num_threads))
+set_num_worker_threads <- function(num) invisible(.Call(wrap__set_num_worker_threads, num))
 
 
 # nolint end

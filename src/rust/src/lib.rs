@@ -1,8 +1,16 @@
 use core::panic;
-use std::{collections::HashSet, io::Read, str::FromStr};
+use std::{
+    collections::HashSet,
+    io::Read,
+    path::{Path, PathBuf},
+    process::Command,
+    str::FromStr,
+    sync::Mutex,
+};
 
 use extendr_api::{io::Load, prelude::*};
 use lmutils::{File, Matrix, ToRMatrix, Transform};
+use log::{error, info};
 use rayon::{iter::ParallelIterator, slice::ParallelSlice};
 
 fn init() {
@@ -12,12 +20,40 @@ fn init() {
 
     let _ = rayon::ThreadPoolBuilder::new()
         .num_threads(
-            std::env::var("LMUTILS_NUM_THREADS")
-                .map(|s| s.parse().expect("LMUTILS_NUM_THREADS is not a number"))
+            std::env::var("LMUTILS_NUM_WORKER_THREADS")
+                .map(|s| {
+                    s.parse()
+                        .expect("LMUTILS_NUM_WORKER_THREADS is not a number")
+                })
                 .unwrap_or_else(|_| num_cpus::get())
                 .clamp(1, num_cpus::get()),
         )
         .build_global();
+}
+
+fn get_num_main_threads() -> usize {
+    std::env::var("LMUTILS_NUM_MAIN_THREADS")
+        .map(|s| s.parse().expect("LMUTILS_NUM_MAIN_THREADS is not a number"))
+        .unwrap_or(16)
+        .clamp(1, num_cpus::get())
+}
+
+/// Convert files from one format to another.
+/// `from` and `to` must be character vectors of the same length.
+/// @export
+#[extendr]
+pub fn convert_file(from: &[Rstr], to: &[Rstr]) -> Result<()> {
+    init();
+
+    if from.len() != to.len() {
+        return Err("from and to must be the same length".into());
+    }
+
+    for (from, to) in from.iter().zip(to.iter()) {
+        lmutils::convert_file(from.as_str(), to.as_str(), lmutils::TransitoryType::Float)?;
+    }
+
+    Ok(())
 }
 
 /// Convert files from one format to another.
@@ -347,6 +383,73 @@ pub fn crossprod(data: Robj, out: Nullable<&str>) -> Result<Nullable<RMatrix<f64
     }
 }
 
+/// Converts a directory of RData files to matrices.
+/// `from` is the directory to read from.
+/// `to` is the directory to write to.
+/// `file_type` is the file extension to write as.
+/// If `to` is `NULL`, the files are written to `from`.
+/// @export
+#[extendr]
+pub fn to_matrix_dir(from: &str, to: Nullable<&str>, file_type: &str) -> Result<()> {
+    init();
+
+    let to = Path::new(match to {
+        Null => from,
+        NotNull(to) => to,
+    });
+    fn list_files(dir: &Path) -> std::io::Result<Vec<PathBuf>> {
+        Ok(std::fs::read_dir(dir)?
+            .flat_map(|entry| {
+                entry.map(|entry| entry.path()).map(|path| {
+                    if path.is_file() {
+                        Ok(vec![path])
+                    } else {
+                        list_files(&path)
+                    }
+                })
+            })
+            .collect::<std::io::Result<Vec<_>>>()?
+            .into_iter()
+            .flatten()
+            .collect::<Vec<_>>())
+    }
+    let files = Mutex::new(list_files(Path::new(from)).unwrap());
+    std::thread::scope(|s| {
+        for _ in 0..get_num_main_threads() {
+            s.spawn(|| loop {
+                let mut guard = files.lock().unwrap();
+                let file = guard.pop();
+                drop(guard);
+                if let Some(file) = file {
+                    let from_file = file.to_str().unwrap();
+                    let to_file = to
+                        .join(from_file.strip_prefix(from).unwrap())
+                        .with_extension(file_type);
+                    let to_file = to_file.to_str().unwrap();
+                    let status = Command::new("Rscript")
+                        .arg("-e")
+                        .arg(format!(
+                            "lmutils::to_matrix('{}', '{}')",
+                            from_file, to_file
+                        ))
+                        .stdout(std::process::Stdio::null())
+                        .stderr(std::process::Stdio::null())
+                        .status()
+                        .expect("failed to execute process");
+                    if status.code().unwrap() != 0 {
+                        error!("failed to convert {}", from_file);
+                    }
+                    info!("converted {} to {}", from_file, to_file)
+                } else {
+                    break;
+                }
+            });
+        }
+    });
+
+    Ok(())
+}
+
 /// Set the log level.
 /// `level` is the log level.
 /// @export
@@ -355,20 +458,22 @@ pub fn set_log_level(level: &str) {
     std::env::set_var("LMUTILS_LOG", level);
 }
 
-/// Set the number of blocks to process at once.
-/// `blocks_per_chunk` is the number of blocks to process at once.
+/// Set the number of main threads to use.
+/// This is the number of primary operations to perform at once.
+/// `num` is the number of main threads.
 /// @export
 #[extendr]
-pub fn set_blocks_at_once(blocks_per_chunk: u32) {
-    std::env::set_var("LMUTILS_BLOCKS_AT_ONCE", blocks_per_chunk.to_string());
+pub fn set_num_main_threads(num: u32) {
+    std::env::set_var("LMUTILS_NUM_MAIN_THREADS", num.to_string());
 }
 
-/// Set the number of threads.
-/// `num_threads` is the number of threads.
+/// Set the number of worker threads to use.
+/// This is the number of threads to use for parallel operations.
+/// `num` is the number of worker threads.
 /// @export
 #[extendr]
-pub fn set_num_threads(num_threads: u32) {
-    std::env::set_var("LMUTILS_NUM_THREADS", num_threads.to_string());
+pub fn set_num_worker_threads(num: u32) {
+    std::env::set_var("LMUTILS_NUM_WORKER_THREADS", num.to_string());
 }
 
 // Macro to generate exports.
@@ -376,6 +481,7 @@ pub fn set_num_threads(num_threads: u32) {
 // See corresponding C code in `entrypoint.c`.
 extendr_module! {
     mod lmutils;
+    fn convert_file;
     fn convert_files;
     fn calculate_r2;
     fn calculate_r2_ranges;
@@ -384,7 +490,9 @@ extendr_module! {
     fn save_matrix;
     fn to_matrix;
     fn crossprod;
+    fn to_matrix_dir;
+
     fn set_log_level;
-    fn set_blocks_at_once;
-    fn set_num_threads;
+    fn set_num_main_threads;
+    fn set_num_worker_threads;
 }

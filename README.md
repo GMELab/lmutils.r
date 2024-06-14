@@ -12,7 +12,7 @@ install.packages("https://github.com/mrvillage/lmutils.r/archive/refs/heads/mast
 
 ## Important Notes
 
-- RData files **CANNOT** be read in parallel like the other formats. It is **HIGHLY** recommended to convert RData files to another format using `lmutils::convert_files` before processing them. The fastest and smallest format is `rkyv.gz`.
+- RData files **CANNOT** be read in parallel like the other formats. It is **HIGHLY** recommended to convert RData files to another format using `lmutils::convert_file` before processing them. The fastest and smallest format is `rkyv.gz`.
 - RData files are assumed to be compressed without looking for a `.gz` file extension.
 - All files are looked for in the current working directory.
 - All files are written to the current working directory.
@@ -20,7 +20,7 @@ install.packages("https://github.com/mrvillage/lmutils.r/archive/refs/heads/mast
 
 ## Functions
 
-### `lmutils::convert_files`
+### `lmutils::convert_file`
 
 Converts matrix files from one format to another. Supported formats are:
 - `csv` (requires column headers)
@@ -34,10 +34,9 @@ Converts matrix files from one format to another. Supported formats are:
 All files can be optionally compressed with `gzip`, `rdata` files are assumed to be compressed without looking for a `.gz` file extension.
 
 ```r
-lmutils::convert_files(
+lmutils::convert_file(
     c("file1.csv", "file2.RData"),
     c("file1.json", "file2.rkyv.gz"),
-    0L # 0L means read as a matrix of floats, 1L means read as a matrix of strings
 )
 ```
 
@@ -173,10 +172,30 @@ lmutils::crossprod(
 )
 ```
 
+### `lmutils::to_matrix_dir`
+
+Converts all files in a directory to matrices.
+
+The first argument is a string directory name to read the files from.
+
+The second argument is a string directory name to write the matrices to.
+
+The third argument is a string file extension to write the matrices as.
+
+If the second argument is `NULL`, the matrices will be written to the input directory.
+
+```r
+lmutils::to_matrix_dir(
+    "data",
+    "matrices",
+    "csv.gz",
+)
+```
+
 ## Configuration
 
 `lmutils` exposes three global config options that can be set using environment variables or the `lmutils` package functions:
 
 - `LMUTILS_LOG`/`lmutils::set_log_level` to set the log level (default: `info`).
-- `LMUTILS_BLOCKS_AT_ONCE`/`lmutils::set_blocks_at_once` to set the number of blocks to process in parallel (default: `16`).
-- `LMUTILS_NUM_THREADS`/`lmutils::set_num_threads` to set the number of threads to use (default: `num_cpus::get()`).
+- `LMUTILS_NUM_MAIN_THREADS`/`lmutils::set_num_main_threads` to set the number of main threads to use (default: `16`). This is the number of primary operations to run in parallel.
+- `LMUTILS_NUM_WORKER_THREADS`/`lmutils::set_num_worker_threads` to set the number of worker threads to use (default: `num_cpus::get()`). This is the number of threads to use for parallel operations. Once an operation has been run, this value cannot be changed.
