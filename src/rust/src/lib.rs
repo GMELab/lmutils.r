@@ -397,6 +397,7 @@ pub fn to_matrix_dir(from: &str, to: Nullable<&str>, file_type: &str) -> Result<
         Null => from,
         NotNull(to) => to,
     });
+    std::fs::create_dir_all(to).unwrap();
     fn list_files(dir: &Path) -> std::io::Result<Vec<PathBuf>> {
         Ok(std::fs::read_dir(dir)?
             .flat_map(|entry| {
