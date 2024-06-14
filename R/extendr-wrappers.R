@@ -59,5 +59,12 @@ save_matrix <- function(mat, out) .Call(wrap__save_matrix, mat, out)
 #' @export
 to_matrix <- function(df, out) .Call(wrap__to_matrix, df, out)
 
+#' Computes the cross product of the matrix. Equivalent to `t(data) %*% data`.
+#' `data` must be a string file name or a matrix.
+#' `out` is the name of the file to save to.
+#' If `out` is `NULL`, the cross product is returned otherwise `NULL`.
+#' @export
+crossprod <- function(data, out) .Call(wrap__crossprod, data, out)
+
 
 # nolint end

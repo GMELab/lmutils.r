@@ -321,4 +321,5 @@ extendr_module! {
     fn remove_rows;
     fn save_matrix;
     fn to_matrix;
+    fn crossprod;
 }
