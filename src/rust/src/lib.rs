@@ -426,6 +426,7 @@ pub fn to_matrix_dir(from: &str, to: Nullable<&str>, file_type: &str) -> Result<
                     let to_file = to
                         .join(from_file.strip_prefix(from).unwrap())
                         .with_extension(file_type);
+                    std::fs::create_dir_all(to_file.parent().unwrap()).unwrap();
                     let to_file = to_file.to_str().unwrap();
                     let status = Command::new("Rscript")
                         .arg("-e")
