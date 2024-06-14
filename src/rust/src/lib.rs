@@ -179,7 +179,7 @@ pub fn calculate_r2_ranges(data: Robj, outcomes: Robj, ranges: RMatrix<u32>) -> 
 
     Ok(data_frame!(
         r2 = res.iter().map(|r| r.r2()).collect::<Vec<_>>(),
-        adj_r2 = res.iter().map(|r| r.adj_r2()).collect::<Vec<_>>()
+        adj_r2 = res.iter().map(|r| r.adj_r2()).collect::<Vec<_>>(),
         data = res.iter().map(|r| r.data()).collect::<Vec<_>>(),
         outcome = res.iter().map(|r| r.outcome()).collect::<Vec<_>>(),
         n = res.iter().map(|r| r.n()).collect::<Vec<_>>(),
