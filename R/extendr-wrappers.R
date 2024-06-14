@@ -66,5 +66,20 @@ to_matrix <- function(df, out) .Call(wrap__to_matrix, df, out)
 #' @export
 crossprod <- function(data, out) .Call(wrap__crossprod, data, out)
 
+#' Set the log level.
+#' `level` is the log level.
+#' @export
+set_log_level <- function(level) invisible(.Call(wrap__set_log_level, level))
+
+#' Set the number of blocks to process at once.
+#' `blocks_per_chunk` is the number of blocks to process at once.
+#' @export
+set_blocks_at_once <- function(blocks_per_chunk) invisible(.Call(wrap__set_blocks_at_once, blocks_per_chunk))
+
+#' Set the number of threads.
+#' `num_threads` is the number of threads.
+#' @export
+set_num_threads <- function(num_threads) invisible(.Call(wrap__set_num_threads, num_threads))
+
 
 # nolint end

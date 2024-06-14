@@ -172,3 +172,11 @@ lmutils::crossprod(
     "crossprod_matrix1.csv",
 )
 ```
+
+## Configuration
+
+`lmutils` exposes three global config options that can be set using environment variables or the `lmutils` package functions:
+
+- `LMUTILS_LOG`/`lmutils::set_log_level` to set the log level (default: `info`).
+- `LMUTILS_BLOCKS_AT_ONCE`/`lmutils::set_blocks_at_once` to set the number of blocks to process in parallel (default: `16`).
+- `LMUTILS_NUM_THREADS`/`lmutils::set_num_threads` to set the number of threads to use (default: `num_cpus::get()`).

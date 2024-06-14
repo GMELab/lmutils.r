@@ -2,15 +2,31 @@ use core::panic;
 use std::{collections::HashSet, io::Read, str::FromStr};
 
 use extendr_api::{io::Load, prelude::*};
-use faer::{Mat, MatMut};
 use lmutils::{File, Matrix, ToRMatrix, Transform};
 use rayon::{iter::ParallelIterator, slice::ParallelSlice};
+
+fn init() {
+    let _ =
+        env_logger::Builder::from_env(env_logger::Env::default().filter_or("LMUTILS_LOG", "info"))
+            .try_init();
+
+    let _ = rayon::ThreadPoolBuilder::new()
+        .num_threads(
+            std::env::var("LMUTILS_NUM_THREADS")
+                .map(|s| s.parse().expect("LMUTILS_NUM_THREADS is not a number"))
+                .unwrap_or_else(|_| num_cpus::get())
+                .clamp(1, num_cpus::get()),
+        )
+        .build_global();
+}
 
 /// Convert files from one format to another.
 /// `from` and `to` must be character vectors of the same length.
 /// @export
 #[extendr]
 pub fn convert_files(from: &[Rstr], to: &[Rstr], item_type: lmutils::TransitoryType) -> Result<()> {
+    init();
+
     if from.len() != to.len() {
         return Err("from and to must be the same length".into());
     }
@@ -32,6 +48,8 @@ const CALCULATE_R2_DATA_MUST_BE: &str =
 /// @export
 #[extendr]
 pub fn calculate_r2(data: Robj, outcomes: Robj) -> Result<Robj> {
+    init();
+
     let outcomes: Result<lmutils::Matrix> = if outcomes.is_string() {
         Ok(lmutils::File::from_str(outcomes.as_str().expect("outcomes is a string"))?.into())
     } else if outcomes.is_matrix() {
@@ -105,6 +123,8 @@ const CALCULATE_R2_RANGES_DATA_MUST_BE: &str = "data must be a string file name 
 /// @export
 #[extendr]
 pub fn calculate_r2_ranges(data: Robj, outcomes: Robj, ranges: RMatrix<u32>) -> Result<Robj> {
+    init();
+
     let outcomes: Result<lmutils::Matrix> = if outcomes.is_string() {
         Ok(lmutils::File::from_str(outcomes.as_str().expect("outcomes is a string"))?.into())
     } else if outcomes.is_matrix() {
@@ -172,6 +192,8 @@ const COMBINE_MATRICES_DATA_MUST_BE: &str =
 /// @export
 #[extendr]
 pub fn combine_matrices(data: Robj, out: Nullable<&str>) -> Result<Nullable<Robj>> {
+    init();
+
     let out = match out {
         Null => None,
         NotNull(out) => Some(lmutils::File::from_str(out)?),
@@ -216,6 +238,8 @@ pub fn combine_matrices(data: Robj, out: Nullable<&str>) -> Result<Nullable<Robj
 const DATA_MUST_BE_FILE_NAME_OR_MATRIX: &str = "data must be a string file name or a matrix";
 
 fn file_or_matrix(data: Robj) -> Result<lmutils::Matrix<'static>> {
+    init();
+
     if data.is_string() {
         Ok(lmutils::File::from_str(data.as_str().expect("data is a string"))?.into())
     } else if data.is_matrix() {
@@ -235,6 +259,8 @@ fn file_or_matrix(data: Robj) -> Result<lmutils::Matrix<'static>> {
 /// @export
 #[extendr]
 pub fn remove_rows(data: Robj, rows: &[u32], out: Nullable<&str>) -> Result<Nullable<Robj>> {
+    init();
+
     let data = file_or_matrix(data)?;
     let out = match out {
         Null => None,
@@ -255,6 +281,8 @@ pub fn remove_rows(data: Robj, rows: &[u32], out: Nullable<&str>) -> Result<Null
 /// @export
 #[extendr]
 pub fn save_matrix(mat: RMatrix<f64>, out: &str) -> Result<()> {
+    init();
+
     Ok(File::from_str(out)?.write_matrix(&Matrix::from(mat).to_owned()?)?)
 }
 
@@ -265,6 +293,8 @@ pub fn save_matrix(mat: RMatrix<f64>, out: &str) -> Result<()> {
 /// @export
 #[extendr]
 pub fn to_matrix(df: Robj, out: Nullable<&str>) -> Result<Nullable<RMatrix<f64>>> {
+    init();
+
     if df.is_string() {
         let mut reader = flate2::read::GzDecoder::new(std::io::BufReader::new(
             std::fs::File::open(df.as_str().unwrap()).unwrap(),
@@ -298,6 +328,8 @@ pub fn to_matrix(df: Robj, out: Nullable<&str>) -> Result<Nullable<RMatrix<f64>>
 /// @export
 #[extendr]
 pub fn crossprod(data: Robj, out: Nullable<&str>) -> Result<Nullable<RMatrix<f64>>> {
+    init();
+
     let data = file_or_matrix(data)?;
     let mut mat = lmutils::cross_product(data.as_mat_ref()?);
     let mat = Matrix::Ref(mat.as_mut()).to_owned()?;
@@ -307,6 +339,30 @@ pub fn crossprod(data: Robj, out: Nullable<&str>) -> Result<Nullable<RMatrix<f64
     } else {
         Ok(Nullable::NotNull(mat.to_rmatrix()))
     }
+}
+
+/// Set the log level.
+/// `level` is the log level.
+/// @export
+#[extendr]
+pub fn set_log_level(level: &str) {
+    std::env::set_var("LMUTILS_LOG", level);
+}
+
+/// Set the number of blocks to process at once.
+/// `blocks_per_chunk` is the number of blocks to process at once.
+/// @export
+#[extendr]
+pub fn set_blocks_at_once(blocks_per_chunk: u32) {
+    std::env::set_var("LMUTILS_BLOCKS_AT_ONCE", blocks_per_chunk.to_string());
+}
+
+/// Set the number of threads.
+/// `num_threads` is the number of threads.
+/// @export
+#[extendr]
+pub fn set_num_threads(num_threads: u32) {
+    std::env::set_var("LMUTILS_NUM_THREADS", num_threads.to_string());
 }
 
 // Macro to generate exports.
@@ -322,4 +378,7 @@ extendr_module! {
     fn save_matrix;
     fn to_matrix;
     fn crossprod;
+    fn set_log_level;
+    fn set_blocks_at_once;
+    fn set_num_threads;
 }
