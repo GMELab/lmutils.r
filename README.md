@@ -192,6 +192,23 @@ lmutils::to_matrix_dir(
 )
 ```
 
+### `lmutils::standardize`
+
+Standardize a matrix. All NaN values are replaced with the mean of the column and each column is scaled to have a mean of 0 and a standard deviation of 1.
+
+The first argument is a string file name or a matrix to read the matrix from.
+
+The second argument is a string file name to save the matrix to.
+
+If the second argument is `NULL`, the function will return the standardized matrix.
+
+```r
+lmutils::standardize(
+    "matrix1.csv",
+    "standardized_matrix1.csv",
+)
+```
+
 ## Configuration
 
 `lmutils` exposes three global config options that can be set using environment variables or the `lmutils` package functions:

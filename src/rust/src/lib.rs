@@ -461,6 +461,29 @@ pub fn to_matrix_dir(from: &str, to: Nullable<&str>, file_type: &str) -> Result<
     Ok(())
 }
 
+/// Standardize a matrix. All NaN values are replaced with the mean of the column and each column is scaled to have a mean of 0 and a standard deviation of 1.
+/// `data` is a string file name or a matrix.
+/// `out` is a file name to write the normalized matrix to.
+/// If `out` is `NULL`, the normalized matrix is returned otherwise `NULL`.
+/// @export
+#[extendr]
+pub fn standardize(data: Robj, out: Nullable<&str>) -> Result<Nullable<RMatrix<f64>>> {
+    init();
+
+    let data = file_or_matrix(data)?;
+    let mat = data
+        .nan_to_mean()
+        .standardization()
+        .transform()?
+        .to_owned()?;
+    if let NotNull(out) = out {
+        File::from_str(out)?.write_matrix(&mat)?;
+        Ok(Nullable::Null)
+    } else {
+        Ok(Nullable::NotNull(mat.to_rmatrix()))
+    }
+}
+
 /// Set the log level.
 /// `level` is the log level.
 /// @export
@@ -502,6 +525,7 @@ extendr_module! {
     fn to_matrix;
     fn crossprod;
     fn to_matrix_dir;
+    fn standardize;
 
     fn set_log_level;
     fn set_num_main_threads;

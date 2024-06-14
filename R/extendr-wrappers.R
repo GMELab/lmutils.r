@@ -79,6 +79,13 @@ crossprod <- function(data, out) .Call(wrap__crossprod, data, out)
 #' @export
 to_matrix_dir <- function(from, to, file_type) .Call(wrap__to_matrix_dir, from, to, file_type)
 
+#' Standardize a matrix. All NaN values are replaced with the mean of the column and each column is scaled to have a mean of 0 and a standard deviation of 1.
+#' `data` is a string file name or a matrix.
+#' `out` is a file name to write the normalized matrix to.
+#' If `out` is `NULL`, the normalized matrix is returned otherwise `NULL`.
+#' @export
+standardize <- function(data, out) .Call(wrap__standardize, data, out)
+
 #' Set the log level.
 #' `level` is the log level.
 #' @export
