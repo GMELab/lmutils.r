@@ -425,7 +425,13 @@ pub fn to_matrix_dir(from: &str, to: Nullable<&str>, file_type: &str) -> Result<
                 if let Some(file) = file {
                     let from_file = file.to_str().unwrap();
                     let to_file = to
-                        .join(from_file.strip_prefix(from).unwrap())
+                        .join(
+                            from_file
+                                .strip_prefix(from)
+                                .unwrap()
+                                .strip_prefix("/")
+                                .unwrap(),
+                        )
                         .with_extension(file_type);
                     debug!("converting {} to {}", from_file, to_file.display());
                     std::fs::create_dir_all(to_file.parent().unwrap()).unwrap();
