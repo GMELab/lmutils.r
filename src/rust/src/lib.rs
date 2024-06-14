@@ -429,10 +429,8 @@ pub fn to_matrix_dir(from: &str, to: Nullable<&str>, file_type: &str) -> Result<
                             from_file
                                 .strip_prefix(from)
                                 .unwrap()
-                                .strip_prefix('/')
-                                .unwrap()
-                                .strip_prefix('\\')
-                                .unwrap(),
+                                .trim_matches('/')
+                                .trim_matches('\\'),
                         )
                         .with_extension(file_type);
                     debug!("converting {} to {}", from_file, to_file.display());
