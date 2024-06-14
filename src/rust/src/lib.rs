@@ -433,14 +433,15 @@ pub fn to_matrix_dir(from: &str, to: Nullable<&str>, file_type: &str) -> Result<
                             "lmutils::to_matrix('{}', '{}')",
                             from_file, to_file
                         ))
-                        .stdout(std::process::Stdio::null())
-                        .stderr(std::process::Stdio::null())
+                        // .stdout(std::process::Stdio::null())
+                        // .stderr(std::process::Stdio::null())
                         .status()
                         .expect("failed to execute process");
                     if status.code().unwrap() != 0 {
                         error!("failed to convert {}", from_file);
+                    } else {
+                        info!("converted {} to {}", from_file, to_file)
                     }
-                    info!("converted {} to {}", from_file, to_file)
                 } else {
                     break;
                 }
