@@ -38,6 +38,20 @@ fn get_num_main_threads() -> usize {
         .clamp(1, num_cpus::get())
 }
 
+fn file_or_matrix(data: Robj) -> Result<lmutils::Matrix<'static>> {
+    init();
+
+    if data.is_string() {
+        Ok(lmutils::File::from_str(data.as_str().expect("data is a string"))?.into())
+    } else if data.is_matrix() {
+        Ok(RMatrix::<f64>::try_from(data)
+            .expect("data is a matrix")
+            .into())
+    } else {
+        Err(DATA_MUST_BE_FILE_NAME_OR_MATRIX.into())
+    }
+}
+
 /// Convert files from one format to another.
 /// `from` and `to` must be character vectors of the same length.
 /// @export
@@ -262,8 +276,7 @@ pub fn combine_matrices(data: Robj, out: Nullable<&str>) -> Result<Nullable<Robj
     let data = data?;
     let res = if data.len() == 1 {
         let mut data = data.into_iter();
-        let first = data.next().expect("data has at least 1 element");
-        first.transform()?
+        data.next().expect("data has at least 1 element")
     } else {
         let mut data = data.into_iter();
         let first = data.next().expect("data has at least 1 element");
@@ -278,20 +291,6 @@ pub fn combine_matrices(data: Robj, out: Nullable<&str>) -> Result<Nullable<Robj
 }
 
 const DATA_MUST_BE_FILE_NAME_OR_MATRIX: &str = "data must be a string file name or a matrix";
-
-fn file_or_matrix(data: Robj) -> Result<lmutils::Matrix<'static>> {
-    init();
-
-    if data.is_string() {
-        Ok(lmutils::File::from_str(data.as_str().expect("data is a string"))?.into())
-    } else if data.is_matrix() {
-        Ok(RMatrix::<f64>::try_from(data)
-            .expect("data is a matrix")
-            .into())
-    } else {
-        Err(DATA_MUST_BE_FILE_NAME_OR_MATRIX.into())
-    }
-}
 
 /// Remove rows from a matrix.
 /// `data` is a character vector of file names, a list of matrices, or a single matrix.
@@ -463,25 +462,19 @@ pub fn to_matrix_dir(from: &str, to: Nullable<&str>, file_type: &str) -> Result<
 
 /// Standardize a matrix. All NaN values are replaced with the mean of the column and each column is scaled to have a mean of 0 and a standard deviation of 1.
 /// `data` is a string file name or a matrix.
-/// `out` is a file name to write the normalized matrix to.
-/// If `out` is `NULL`, the normalized matrix is returned otherwise `NULL`.
+/// `out` is a file name to write the normalized matrix to or `NULL`.
+/// If `data` is an R matrix, then the matrix is mutated to reuse memory.
 /// @export
 #[extendr]
-pub fn standardize(data: Robj, out: Nullable<&str>) -> Result<Nullable<RMatrix<f64>>> {
+pub fn standardize(data: Robj, out: Nullable<&str>) -> Result<()> {
     init();
 
     let data = file_or_matrix(data)?;
-    let mat = data
-        .nan_to_mean()
-        .standardization()
-        .transform()?
-        .to_owned()?;
+    let mat = data.nan_to_mean().standardization().transform()?;
     if let NotNull(out) = out {
-        File::from_str(out)?.write_matrix(&mat)?;
-        Ok(Nullable::Null)
-    } else {
-        Ok(Nullable::NotNull(mat.to_rmatrix()))
+        File::from_str(out)?.write_matrix(&mat.to_owned()?)?;
     }
+    Ok(())
 }
 
 /// Set the log level.
