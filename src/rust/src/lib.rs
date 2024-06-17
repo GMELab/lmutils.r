@@ -463,8 +463,8 @@ pub fn to_matrix_dir(from: &str, to: Nullable<&str>, file_type: &str) -> Result<
 /// Standardize a matrix. All NaN values are replaced with the mean of the column and each column is scaled to have a mean of 0 and a standard deviation of 1.
 /// `data` is a string file name or a matrix.
 /// `out` is a file name to write the normalized matrix to, `TRUE` to return the normalized matrix
-/// instead of mutating, or `NULL`.
-/// If `data` is an R matrix and `out` is not `TRUE`, then the matrix is mutated to reuse memory.
+/// instead of mutating, or `NULL` to mutate the matrix passed in if it's an R matrix.
+/// If `data` is an R matrix and `out` is not `NULL`, then the matrix is mutated to reuse memory.
 /// @export
 #[extendr]
 pub fn standardize(data: Robj, out: Nullable<Robj>) -> Result<Robj> {
@@ -473,6 +473,7 @@ pub fn standardize(data: Robj, out: Nullable<Robj>) -> Result<Robj> {
     let mut data = file_or_matrix(data)?;
     if let NotNull(ref out) = out {
         if out.is_string() {
+            data.into_owned()?;
         } else if out.is_logical() {
             if out.as_logical().unwrap().is_true() {
                 data.into_owned()?;
