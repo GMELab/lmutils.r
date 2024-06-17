@@ -81,10 +81,16 @@ to_matrix_dir <- function(from, to, file_type) .Call(wrap__to_matrix_dir, from, 
 
 #' Standardize a matrix. All NaN values are replaced with the mean of the column and each column is scaled to have a mean of 0 and a standard deviation of 1.
 #' `data` is a string file name or a matrix.
-#' `out` is a file name to write the normalized matrix to.
-#' If `out` is `NULL`, the normalized matrix is returned otherwise `NULL`.
+#' `out` is a file name to write the normalized matrix to, `TRUE` to return the normalized matrix
+#' instead of mutating, or `NULL` to mutate the matrix passed in if it's an R matrix.
+#' If `data` is an R matrix and `out` is not `NULL`, then the matrix is mutated to reuse memory.
 #' @export
 standardize <- function(data, out) .Call(wrap__standardize, data, out)
+
+#' Load a matrix from a file.
+#' `file` is the name of the file to load from.
+#' @export
+load_matrix <- function(file) .Call(wrap__load_matrix, file)
 
 #' Set the log level.
 #' `level` is the log level.

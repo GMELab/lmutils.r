@@ -493,6 +493,16 @@ pub fn standardize(data: Robj, out: Nullable<Robj>) -> Result<Robj> {
     Ok(().into())
 }
 
+/// Load a matrix from a file.
+/// `file` is the name of the file to load from.
+/// @export
+#[extendr]
+pub fn load_matrix(file: &str) -> Result<RMatrix<f64>> {
+    init();
+
+    Ok(File::from_str(file)?.read_matrix(true)?.to_rmatrix())
+}
+
 /// Set the log level.
 /// `level` is the log level.
 /// @export
@@ -535,6 +545,7 @@ extendr_module! {
     fn crossprod;
     fn to_matrix_dir;
     fn standardize;
+    fn load_matrix;
 
     fn set_log_level;
     fn set_num_main_threads;
