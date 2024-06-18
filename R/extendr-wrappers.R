@@ -71,7 +71,7 @@ to_matrix <- function(df, out) .Call(wrap__to_matrix, df, out)
 #' @export
 crossprod <- function(data, out) .Call(wrap__crossprod, data, out)
 
-#' Converts a directory of RData files to matrices.
+#' Recursively converts a directory of RData files to matrices.
 #' `from` is the directory to read from.
 #' `to` is the directory to write to.
 #' `file_type` is the file extension to write as.

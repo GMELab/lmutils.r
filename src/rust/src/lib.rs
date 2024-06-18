@@ -382,7 +382,7 @@ pub fn crossprod(data: Robj, out: Nullable<&str>) -> Result<Nullable<RMatrix<f64
     }
 }
 
-/// Converts a directory of RData files to matrices.
+/// Recursively converts a directory of RData files to matrices.
 /// `from` is the directory to read from.
 /// `to` is the directory to write to.
 /// `file_type` is the file extension to write as.

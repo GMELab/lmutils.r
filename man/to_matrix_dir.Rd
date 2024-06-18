@@ -2,7 +2,7 @@
 % Please edit documentation in R/extendr-wrappers.R
 \name{to_matrix_dir}
 \alias{to_matrix_dir}
-\title{Converts a directory of RData files to matrices.
+\title{Recursively converts a directory of RData files to matrices.
 \code{from} is the directory to read from.
 \code{to} is the directory to write to.
 \code{file_type} is the file extension to write as.
@@ -11,7 +11,7 @@ If \code{to} is \code{NULL}, the files are written to \code{from}.}
 to_matrix_dir(from, to, file_type)
 }
 \description{
-Converts a directory of RData files to matrices.
+Recursively converts a directory of RData files to matrices.
 \code{from} is the directory to read from.
 \code{to} is the directory to write to.
 \code{file_type} is the file extension to write as.
