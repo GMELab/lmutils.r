@@ -655,6 +655,8 @@ checksum = "4ec2a862134d2a7d32d7983ddcdd1c4923530833c9f2ea1a44fc5fa473989058"
 [[package]]
 name = "lmutils"
 version = "0.1.13"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8f29276511ec8168052115a18cb8246ae87ced9aea279672256cab12462900d8"
 dependencies = [
  "csv",
  "extendr-api",
@@ -713,9 +715,9 @@ checksum = "78ca9ab1a0babb1e7d5695e3530886289c18cf2f87ec19a575a0abdce112e3a3"
 
 [[package]]
 name = "miniz_oxide"
-version = "0.7.3"
+version = "0.7.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "87dfd01fe195c66b572b37921ad8803d010623c0aca821bea2302239d155cdae"
+checksum = "b8a240ddb74feaf34a79a7add65a741f3167852fba007066dcac1ca548d89c08"
 dependencies = [
  "adler",
 ]
