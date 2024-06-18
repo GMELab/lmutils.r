@@ -435,18 +435,20 @@ pub fn to_matrix_dir(from: &str, to: Nullable<&str>, file_type: &str) -> Result<
                     debug!("converting {} to {}", from_file, to_file.display());
                     std::fs::create_dir_all(to_file.parent().unwrap()).unwrap();
                     let to_file = to_file.to_str().unwrap();
-                    let status = Command::new("Rscript")
+                    let output = Command::new("Rscript")
                         .arg("-e")
                         .arg(format!(
                             "lmutils::to_matrix('{}', '{}')",
                             from_file, to_file
                         ))
-                        .stdout(std::process::Stdio::null())
-                        .stderr(std::process::Stdio::null())
-                        .status()
+                        .stdout(std::process::Stdio::piped())
+                        .stderr(std::process::Stdio::piped())
+                        .output()
                         .expect("failed to execute process");
-                    if status.code().unwrap() != 0 {
+                    if output.status.code().unwrap() != 0 {
                         error!("failed to convert {}", from_file);
+                        error!("STDOUT: {}", String::from_utf8_lossy(&output.stdout));
+                        error!("STDERR: {}", String::from_utf8_lossy(&output.stderr));
                     } else {
                         info!("converted {} to {}", from_file, to_file)
                     }
