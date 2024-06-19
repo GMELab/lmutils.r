@@ -48,7 +48,7 @@ The first argument is a character vector of file names to read the blocks from, 
 
 The second argument is a single file name or matrix to use as the outcomes. Each outcome is a column in the matrix.
 
-The function returns a data frame with columns `r2`, `adj_r2`, `data`, and `outcome`.
+The function returns a data frame with columns `r2`, `adj_r2`, `data`, `outcome`, `n`, `m`, and `predicted`.
 
 ```r
 results <- lmutils::calculate_r2(
@@ -60,6 +60,8 @@ results <- lmutils::calculate_r2(
 ### `lmutils::calculate_r2_ranges`
 
 Calculates the R^2 and adjusted R^2 values for blocks and outcomes for a range of columns. Each block is a one range of columns in the provided matrix.
+
+**You will likely never need this function `lmutils::calculate_r2` is much more useful.**
 
 The first argument is file name to read the matrix from or a matrix.
 

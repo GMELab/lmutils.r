@@ -100,6 +100,7 @@ const CALCULATE_R2_DATA_MUST_BE: &str =
 pub fn calculate_r2(data: Robj, outcomes: Robj) -> Result<Robj> {
     init();
 
+    debug!("Loading outcomes");
     let outcomes: Result<lmutils::Matrix> = if outcomes.is_string() {
         Ok(lmutils::File::from_str(outcomes.as_str().expect("outcomes is a string"))?.into())
     } else if outcomes.is_matrix() {
@@ -109,7 +110,9 @@ pub fn calculate_r2(data: Robj, outcomes: Robj) -> Result<Robj> {
     } else {
         Err("outcomes must be a string or a matrix".into())
     };
+    debug!("Loaded outcomes");
     let outcomes = outcomes?;
+    debug!("Loading data");
     let data: Result<Vec<(&str, lmutils::Matrix)>> = if data.is_list() {
         let data = data.as_list().expect("data is a list");
         if data.len() == 0 {
@@ -149,20 +152,30 @@ pub fn calculate_r2(data: Robj, outcomes: Robj) -> Result<Robj> {
         Err(CALCULATE_R2_DATA_MUST_BE.into())
     };
     let data = data?;
+    debug!("Loaded data");
     let data_names = data.iter().map(|(x, _)| x.to_string()).collect::<Vec<_>>();
     let data_names = data_names.iter().map(|x| x.as_str()).collect::<Vec<_>>();
     let data = data.into_iter().map(|(_, i)| i).collect::<Vec<_>>();
 
+    debug!("Calculating R^2");
     let res = lmutils::calculate_r2s(data, outcomes, Some(data_names))?;
-    Ok(data_frame!(
+    debug!("Calculated R^2");
+    debug!("Results {:?}", res);
+    let mut df = data_frame!(
         r2 = res.iter().map(|r| r.r2()).collect::<Vec<_>>(),
         adj_r2 = res.iter().map(|r| r.adj_r2()).collect::<Vec<_>>(),
         data = res.iter().map(|r| r.data()).collect::<Vec<_>>(),
         outcome = res.iter().map(|r| r.outcome()).collect::<Vec<_>>(),
         n = res.iter().map(|r| r.n()).collect::<Vec<_>>(),
-        m = res.iter().map(|r| r.m()).collect::<Vec<_>>()
+        m = res.iter().map(|r| r.m()).collect::<Vec<_>>(),
+        predicted = res.iter().map(|_| 0).collect::<Vec<_>>()
     )
-    .into_robj())
+    .as_list()
+    .unwrap();
+    let predicted = List::from_values(res.iter().map(|r| r.predicted())).into_robj();
+    let ncols = df.len();
+    df.set_elt(ncols - 1, predicted).unwrap();
+    Ok(df.into_robj())
 }
 
 const CALCULATE_R2_RANGES_DATA_MUST_BE: &str = "data must be a string file name or a matrix";
@@ -227,15 +240,21 @@ pub fn calculate_r2_ranges(data: Robj, outcomes: Robj, ranges: RMatrix<u32>) -> 
         .collect::<Vec<_>>();
     let res = lmutils::calculate_r2s(data, outcomes, None)?;
 
-    Ok(data_frame!(
+    let mut df = data_frame!(
         r2 = res.iter().map(|r| r.r2()).collect::<Vec<_>>(),
         adj_r2 = res.iter().map(|r| r.adj_r2()).collect::<Vec<_>>(),
         data = res.iter().map(|r| r.data()).collect::<Vec<_>>(),
         outcome = res.iter().map(|r| r.outcome()).collect::<Vec<_>>(),
         n = res.iter().map(|r| r.n()).collect::<Vec<_>>(),
-        m = res.iter().map(|r| r.m()).collect::<Vec<_>>()
+        m = res.iter().map(|r| r.m()).collect::<Vec<_>>(),
+        predicted = res.iter().map(|_| 0).collect::<Vec<_>>()
     )
-    .into_robj())
+    .as_list()
+    .unwrap();
+    let predicted = List::from_values(res.iter().map(|r| r.predicted())).into_robj();
+    let ncols = df.len();
+    df.set_elt(ncols - 1, predicted).unwrap();
+    Ok(df.into_robj())
 }
 
 const COMBINE_MATRICES_DATA_MUST_BE: &str =
