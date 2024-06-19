@@ -92,6 +92,13 @@ standardize <- function(data, out) .Call(wrap__standardize, data, out)
 #' @export
 load_matrix <- function(file) .Call(wrap__load_matrix, file)
 
+#' Compute the p value of a linear regression between each pair of columns in two matrices.
+#' `data` is a character vector of file names, a list of matrices, or a single matrix.
+#' `outcomes` is a file name or a matrix.
+#' Returns a data frame with columns `p`, `data`, `data_column`, and `outcome`.
+#' @export
+column_p_values <- function(data, outcomes) .Call(wrap__column_p_values, data, outcomes)
+
 #' Set the log level.
 #' `level` is the log level.
 #' @export

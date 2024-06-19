@@ -2,6 +2,7 @@
 
 export(calculate_r2)
 export(calculate_r2_ranges)
+export(column_p_values)
 export(combine_matrices)
 export(convert_file)
 export(convert_files)

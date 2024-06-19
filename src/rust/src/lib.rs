@@ -48,7 +48,48 @@ fn file_or_matrix(data: Robj) -> Result<lmutils::Matrix<'static>> {
             .expect("data is a matrix")
             .into())
     } else {
-        Err(DATA_MUST_BE_FILE_NAME_OR_MATRIX.into())
+        Err(MUST_BE_FILE_NAME_OR_MATRIX.into())
+    }
+}
+
+fn file_or_matrix_list(data: Robj) -> Result<Vec<(String, lmutils::Matrix<'static>)>> {
+    if data.is_list() {
+        let data = data.as_list().expect("data is a list");
+        if data.len() == 0 {
+            return Err(CALCULATE_R2_DATA_MUST_BE.into());
+        }
+        data.into_iter()
+            .map(|(x, i)| {
+                if i.is_matrix() {
+                    Ok((
+                        x.to_string(),
+                        RMatrix::<f64>::try_from(i).expect("i is a matrix").into(),
+                    ))
+                } else if i.is_string() {
+                    Ok((
+                        i.as_str().unwrap().to_string(),
+                        lmutils::File::from_str(i.as_str().expect("i is a string"))?.into(),
+                    ))
+                } else {
+                    Err(CALCULATE_R2_DATA_MUST_BE.into())
+                }
+            })
+            .collect()
+    } else if data.is_string() {
+        let data = data.as_str_vector().expect("data is a string vector");
+        data.into_iter()
+            .map(|i| Ok((i.to_string(), lmutils::File::from_str(i)?.into())))
+            .collect()
+    } else if data.is_matrix() {
+        let data = (
+            "1".to_string(),
+            RMatrix::<f64>::try_from(data)
+                .expect("data is a matrix")
+                .into(),
+        );
+        Ok(vec![data])
+    } else {
+        Err(CALCULATE_R2_DATA_MUST_BE.into())
     }
 }
 
@@ -88,9 +129,6 @@ pub fn convert_files(from: &[Rstr], to: &[Rstr], item_type: lmutils::TransitoryT
     Ok(())
 }
 
-const CALCULATE_R2_DATA_MUST_BE: &str =
-    "data must be a character vector, a list of matrices, or a single matrix";
-
 /// Calculate R^2 and adjusted R^2 for a block and outcomes.
 /// `data` is a character vector of file names, a list of matrices, or a single matrix.
 /// `outcomes` is a file name or a matrix.
@@ -101,64 +139,18 @@ pub fn calculate_r2(data: Robj, outcomes: Robj) -> Result<Robj> {
     init();
 
     debug!("Loading outcomes");
-    let outcomes: Result<lmutils::Matrix> = if outcomes.is_string() {
-        Ok(lmutils::File::from_str(outcomes.as_str().expect("outcomes is a string"))?.into())
-    } else if outcomes.is_matrix() {
-        Ok(RMatrix::<f64>::try_from(outcomes)
-            .expect("outcomes is a matrix")
-            .into())
-    } else {
-        Err("outcomes must be a string or a matrix".into())
-    };
-    debug!("Loaded outcomes");
-    let outcomes = outcomes?;
+    let outcomes = file_or_matrix(outcomes)?;
     debug!("Loading data");
-    let data: Result<Vec<(&str, lmutils::Matrix)>> = if data.is_list() {
-        let data = data.as_list().expect("data is a list");
-        if data.len() == 0 {
-            return Err(CALCULATE_R2_DATA_MUST_BE.into());
-        }
-        data.into_iter()
-            .map(|(x, i)| {
-                if i.is_matrix() {
-                    Ok((
-                        x,
-                        RMatrix::<f64>::try_from(i).expect("i is a matrix").into(),
-                    ))
-                } else if i.is_string() {
-                    Ok((
-                        i.as_str().unwrap(),
-                        lmutils::File::from_str(i.as_str().expect("i is a string"))?.into(),
-                    ))
-                } else {
-                    Err(CALCULATE_R2_DATA_MUST_BE.into())
-                }
-            })
-            .collect()
-    } else if data.is_string() {
-        let data = data.as_str_vector().expect("data is a string vector");
-        data.into_iter()
-            .map(|i| Ok((i, lmutils::File::from_str(i)?.into())))
-            .collect()
-    } else if data.is_matrix() {
-        let data = (
-            "1",
-            RMatrix::<f64>::try_from(data)
-                .expect("data is a matrix")
-                .into(),
-        );
-        Ok(vec![data])
-    } else {
-        Err(CALCULATE_R2_DATA_MUST_BE.into())
-    };
-    let data = data?;
+    let data = file_or_matrix_list(data)?;
     debug!("Loaded data");
-    let data_names = data.iter().map(|(x, _)| x.to_string()).collect::<Vec<_>>();
-    let data_names = data_names.iter().map(|x| x.as_str()).collect::<Vec<_>>();
-    let data = data.into_iter().map(|(_, i)| i).collect::<Vec<_>>();
+    let (data_names, data): (Vec<_>, Vec<_>) = data.into_iter().unzip();
 
     debug!("Calculating R^2");
-    let res = lmutils::calculate_r2s(data, outcomes, Some(data_names))?;
+    let res = lmutils::calculate_r2s(
+        data,
+        outcomes,
+        Some(data_names.iter().map(|x| x.as_str()).collect()),
+    )?;
     debug!("Calculated R^2");
     debug!("Results {:?}", res);
     let mut df = data_frame!(
@@ -178,8 +170,6 @@ pub fn calculate_r2(data: Robj, outcomes: Robj) -> Result<Robj> {
     Ok(df.into_robj())
 }
 
-const CALCULATE_R2_RANGES_DATA_MUST_BE: &str = "data must be a string file name or a matrix";
-
 /// Calculate R^2 and adjusted R^2 for ranges of a data matrix and outcomes.
 /// `data` is a string file name or a matrix.
 /// `outcomes` is a string file name or a matrix.
@@ -190,27 +180,8 @@ const CALCULATE_R2_RANGES_DATA_MUST_BE: &str = "data must be a string file name 
 pub fn calculate_r2_ranges(data: Robj, outcomes: Robj, ranges: RMatrix<u32>) -> Result<Robj> {
     init();
 
-    let outcomes: Result<lmutils::Matrix> = if outcomes.is_string() {
-        Ok(lmutils::File::from_str(outcomes.as_str().expect("outcomes is a string"))?.into())
-    } else if outcomes.is_matrix() {
-        Ok(RMatrix::<f64>::try_from(outcomes)
-            .expect("outcomes is a matrix")
-            .into())
-    } else {
-        Err("outcomes must be a string or a matrix".into())
-    };
-    let outcomes = outcomes?;
-    let data: Result<lmutils::Matrix> = if data.is_string() {
-        Ok(lmutils::File::from_str(data.as_str().expect("data is a string"))?.into())
-    } else if data.is_matrix() {
-        Ok(RMatrix::<f64>::try_from(data)
-            .expect("data is a matrix")
-            .into())
-    } else {
-        Err(CALCULATE_R2_RANGES_DATA_MUST_BE.into())
-    };
-    let data = data?;
-
+    let outcomes = file_or_matrix(outcomes)?;
+    let data = file_or_matrix(data)?;
     if ranges.ncols() != 2 {
         return Err("ranges must have 2 columns".into());
     }
@@ -309,7 +280,9 @@ pub fn combine_matrices(data: Robj, out: Nullable<&str>) -> Result<Nullable<Robj
     }
 }
 
-const DATA_MUST_BE_FILE_NAME_OR_MATRIX: &str = "data must be a string file name or a matrix";
+const MUST_BE_FILE_NAME_OR_MATRIX: &str = "must be a string file name or a matrix";
+const CALCULATE_R2_DATA_MUST_BE: &str =
+    "data must be a character vector, a list of matrices, or a single matrix";
 
 /// Remove rows from a matrix.
 /// `data` is a character vector of file names, a list of matrices, or a single matrix.
@@ -524,6 +497,39 @@ pub fn load_matrix(file: &str) -> Result<RMatrix<f64>> {
     Ok(File::from_str(file)?.read_matrix(true)?.to_rmatrix())
 }
 
+/// Compute the p value of a linear regression between each pair of columns in two matrices.
+/// `data` is a character vector of file names, a list of matrices, or a single matrix.
+/// `outcomes` is a file name or a matrix.
+/// Returns a data frame with columns `p`, `data`, `data_column`, and `outcome`.
+/// @export
+#[extendr]
+pub fn column_p_values(data: Robj, outcomes: Robj) -> Result<Robj> {
+    init();
+
+    debug!("Loading outcomes");
+    let outcomes = file_or_matrix(outcomes)?;
+    debug!("Loading data");
+    let data = file_or_matrix_list(data)?;
+    debug!("Loaded data");
+    let (data_names, data): (Vec<_>, Vec<_>) = data.into_iter().unzip();
+
+    debug!("Calculating p values");
+    let res = lmutils::column_p_values(
+        data,
+        outcomes,
+        Some(data_names.iter().map(|x| x.as_str()).collect()),
+    )?;
+    debug!("Calculated p values");
+    debug!("Results {:?}", res);
+    Ok(data_frame!(
+        p_value = res.iter().map(|r| r.p_value()).collect::<Vec<_>>(),
+        data = res.iter().map(|r| r.data()).collect::<Vec<_>>(),
+        data_column = res.iter().map(|r| r.data_column()).collect::<Vec<_>>(),
+        outcome = res.iter().map(|r| r.outcome()).collect::<Vec<_>>()
+    )
+    .into_robj())
+}
+
 /// Set the log level.
 /// `level` is the log level.
 /// @export
@@ -567,6 +573,7 @@ extendr_module! {
     fn to_matrix_dir;
     fn standardize;
     fn load_matrix;
+    fn column_p_values;
 
     fn set_log_level;
     fn set_num_main_threads;
