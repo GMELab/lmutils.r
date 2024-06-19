@@ -211,6 +211,24 @@ lmutils::standardize(
 )
 ```
 
+
+### `lmutils::column_p_values`
+
+Computes the p-values of a linear regression between each pair of columns in two matrices.
+
+The first argument is a character vector of file names to read from, a list of matrices to use as the blocks, or a single matrix.
+
+The second argument is a string file name or a matrix to read from.
+
+The function returns a data frame with columns `p_value`, `data`, `data_column`, and `outcome` corresponding to each range in order.
+
+```r
+results <- lmutils::column_p_values(
+    c("block1.csv", "block2.rkyv.gz"),
+    "outcomes1.RData",
+)
+```
+
 ## Configuration
 
 `lmutils` exposes three global config options that can be set using environment variables or the `lmutils` package functions:
