@@ -445,7 +445,7 @@ pub fn to_matrix_dir(from: &str, to: Nullable<&str>, file_type: &str) -> Result<
                         .stderr(std::process::Stdio::piped())
                         .output()
                         .expect("failed to execute process");
-                    if output.status.code().unwrap() != 0 {
+                    if output.status.code().is_none() || output.status.code().unwrap() != 0 {
                         error!("failed to convert {}", from_file);
                         error!("STDOUT: {}", String::from_utf8_lossy(&output.stdout));
                         error!("STDERR: {}", String::from_utf8_lossy(&output.stderr));
