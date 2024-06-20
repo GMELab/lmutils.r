@@ -176,7 +176,7 @@ lmutils::crossprod(
 
 ### `lmutils::to_matrix_dir`
 
-Converts all files in a directory to matrices.
+Recursively converts all files in a directory to matrices.
 
 The first argument is a string directory name to read the files from.
 
@@ -235,4 +235,4 @@ results <- lmutils::column_p_values(
 
 - `LMUTILS_LOG`/`lmutils::set_log_level` to set the log level (default: `info`).
 - `LMUTILS_NUM_MAIN_THREADS`/`lmutils::set_num_main_threads` to set the number of main threads to use (default: `16`). This is the number of primary operations to run in parallel.
-- `LMUTILS_NUM_WORKER_THREADS`/`lmutils::set_num_worker_threads` to set the number of worker threads to use (default: `num_cpus::get()`). This is the number of threads to use for parallel operations. Once an operation has been run, this value cannot be changed.
+- `LMUTILS_NUM_WORKER_THREADS`/`lmutils::set_num_worker_threads` to set the number of worker threads to use (default: `num_cpus::get() / 2`). This is the number of threads to use for parallel operations. Once an operation has been run, this value cannot be changed.

@@ -9,7 +9,7 @@ use std::{
 };
 
 use extendr_api::{io::Load, prelude::*};
-use lmutils::{File, Matrix, ToRMatrix, Transform};
+use lmutils::{File, IntoMatrix, Matrix, OwnedMatrix, ToRMatrix, Transform};
 use log::{debug, error, info};
 use rayon::{iter::ParallelIterator, slice::ParallelSlice};
 
@@ -25,7 +25,7 @@ fn init() {
                     s.parse()
                         .expect("LMUTILS_NUM_WORKER_THREADS is not a number")
                 })
-                .unwrap_or_else(|_| num_cpus::get())
+                .unwrap_or_else(|_| num_cpus::get() / 2)
                 .clamp(1, num_cpus::get()),
         )
         .build_global();
@@ -38,6 +38,15 @@ fn get_num_main_threads() -> usize {
         .clamp(1, num_cpus::get())
 }
 
+fn rmatrix(data: Robj) -> Result<Matrix<'static>> {
+    let float = RMatrix::<f64>::try_from(data);
+    match float {
+        Ok(float) => Ok(float.into()),
+        Err(Error::TypeMismatch(data)) => Ok(RMatrix::<i32>::try_from(data)?.into_matrix()),
+        Err(e) => Err(e),
+    }
+}
+
 fn file_or_matrix(data: Robj) -> Result<lmutils::Matrix<'static>> {
     init();
 
@@ -47,6 +56,17 @@ fn file_or_matrix(data: Robj) -> Result<lmutils::Matrix<'static>> {
         Ok(RMatrix::<f64>::try_from(data)
             .expect("data is a matrix")
             .into())
+    } else if data.is_integer() {
+        let v = data
+            .as_integer_slice()
+            .expect("data is an integer vector")
+            .iter()
+            .map(|i| *i as f64)
+            .collect::<Vec<_>>();
+        Ok(Matrix::Owned(OwnedMatrix::new(v.len(), 1, v, None)))
+    } else if data.is_real() {
+        let v = data.as_real_vector().expect("data is a real vector");
+        Ok(Matrix::Owned(OwnedMatrix::new(v.len(), 1, v, None)))
     } else {
         Err(MUST_BE_FILE_NAME_OR_MATRIX.into())
     }
@@ -63,17 +83,43 @@ fn file_or_matrix_list(data: Robj) -> Result<Vec<(String, lmutils::Matrix<'stati
             .map(|(i, (x, r))| {
                 if r.is_matrix() {
                     Ok((
-                        if x.is_empty() {
-                            i.to_string()
+                        if x.is_empty() || x == "NA" {
+                            (i + 1).to_string()
                         } else {
                             x.to_string()
                         },
-                        RMatrix::<f64>::try_from(r).expect("i is a matrix").into(),
+                        rmatrix(r)?,
+                        // RMatrix::<f64>::try_from(r).expect("i is a matrix").into(),
                     ))
                 } else if r.is_string() {
                     Ok((
                         r.as_str().unwrap().to_string(),
                         lmutils::File::from_str(r.as_str().expect("i is a string"))?.into(),
+                    ))
+                } else if r.is_integer() {
+                    let v = r
+                        .as_integer_slice()
+                        .expect("data is an integer vector")
+                        .iter()
+                        .map(|i| *i as f64)
+                        .collect::<Vec<_>>();
+                    Ok((
+                        if x.is_empty() || x == "NA" {
+                            (i + 1).to_string()
+                        } else {
+                            x.to_string()
+                        },
+                        Matrix::Owned(OwnedMatrix::new(v.len(), 1, v, None)),
+                    ))
+                } else if r.is_real() {
+                    let v = r.as_real_vector().expect("data is a real vector");
+                    Ok((
+                        if x.is_empty() || x == "NA" {
+                            (i + 1).to_string()
+                        } else {
+                            x.to_string()
+                        },
+                        Matrix::Owned(OwnedMatrix::new(v.len(), 1, v, None)),
                     ))
                 } else {
                     Err(CALCULATE_R2_DATA_MUST_BE.into())
@@ -93,6 +139,23 @@ fn file_or_matrix_list(data: Robj) -> Result<Vec<(String, lmutils::Matrix<'stati
                 .into(),
         );
         Ok(vec![data])
+    } else if data.is_integer() {
+        let v = data
+            .as_integer_slice()
+            .expect("data is an integer vector")
+            .iter()
+            .map(|i| *i as f64)
+            .collect::<Vec<_>>();
+        Ok(vec![(
+            "1".to_string(),
+            Matrix::Owned(OwnedMatrix::new(v.len(), 1, v, None)),
+        )])
+    } else if data.is_real() {
+        let v = data.as_real_vector().expect("data is a real vector");
+        Ok(vec![(
+            "1".to_string(),
+            Matrix::Owned(OwnedMatrix::new(v.len(), 1, v, None)),
+        )])
     } else {
         Err(CALCULATE_R2_DATA_MUST_BE.into())
     }
