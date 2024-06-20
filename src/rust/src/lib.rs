@@ -59,16 +59,21 @@ fn file_or_matrix_list(data: Robj) -> Result<Vec<(String, lmutils::Matrix<'stati
             return Err(CALCULATE_R2_DATA_MUST_BE.into());
         }
         data.into_iter()
-            .map(|(x, i)| {
-                if i.is_matrix() {
+            .enumerate()
+            .map(|(i, (x, r))| {
+                if r.is_matrix() {
                     Ok((
-                        x.to_string(),
-                        RMatrix::<f64>::try_from(i).expect("i is a matrix").into(),
+                        if x.is_empty() {
+                            i.to_string()
+                        } else {
+                            x.to_string()
+                        },
+                        RMatrix::<f64>::try_from(r).expect("i is a matrix").into(),
                     ))
-                } else if i.is_string() {
+                } else if r.is_string() {
                     Ok((
-                        i.as_str().unwrap().to_string(),
-                        lmutils::File::from_str(i.as_str().expect("i is a string"))?.into(),
+                        r.as_str().unwrap().to_string(),
+                        lmutils::File::from_str(r.as_str().expect("i is a string"))?.into(),
                     ))
                 } else {
                     Err(CALCULATE_R2_DATA_MUST_BE.into())

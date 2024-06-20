@@ -42,7 +42,7 @@ lmutils::convert_file(
 
 ### `lmutils::calculate_r2`
 
-Calculates the R^2 and adjusted R^2 values for a block and outcomes.
+Calculates the R^2 and adjusted R^2 values for blocks and outcomes.
 
 The first argument is a character vector of file names to read the blocks from, a list of matrices to use as the blocks, or a single matrix.
 
