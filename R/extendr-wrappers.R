@@ -83,7 +83,6 @@ to_matrix_dir <- function(from, to, file_type) .Call(wrap__to_matrix_dir, from, 
 #' `data` is a string file name or a matrix.
 #' `out` is a file name to write the normalized matrix to, `TRUE` to return the normalized matrix
 #' instead of mutating, or `NULL` to mutate the matrix passed in if it's an R matrix.
-#' If `data` is an R matrix and `out` is not `NULL`, then the matrix is mutated to reuse memory.
 #' @export
 standardize <- function(data, out) .Call(wrap__standardize, data, out)
 
@@ -98,6 +97,14 @@ load_matrix <- function(file) .Call(wrap__load_matrix, file)
 #' Returns a data frame with columns `p`, `data`, `data_column`, and `outcome`.
 #' @export
 column_p_values <- function(data, outcomes) .Call(wrap__column_p_values, data, outcomes)
+
+#' Match the rows of a matrix to the values in a vector by a column.
+#' `data` is a string file name or a matrix.
+#' `to` is a numeric vector.
+#' `by` is the column to match by.
+#' `out` is a file name to write the matched matrix to or `NULL` to return the matched matrix.
+#' @export
+match_rows <- function(data, to, by, out) .Call(wrap__match_rows, data, to, by, out)
 
 #' Set the log level.
 #' `level` is the log level.

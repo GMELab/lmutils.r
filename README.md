@@ -236,6 +236,27 @@ results <- lmutils::column_p_values(
 )
 ```
 
+### `lmutils::match_rows`
+
+Matches rows of a matrix to the values in a vector by a column.
+
+The first argument is a string file name or a matrix to read the matrix from.
+
+The second argument is a numeric vector to match the rows to.
+
+The third argument is the column name to match the rows by.
+
+The fourth argument is a string file name to write the new matrix to or `NULL` to return the new matrix.
+
+```r
+lmutils::match_rows(
+    "matrix1.csv",
+    c(1, 2, 3),
+    "eid",
+    "matrix1_matched_rows.csv",
+)
+```
+
 ## Configuration
 
 `lmutils` exposes three global config options that can be set using environment variables or the `lmutils` package functions:

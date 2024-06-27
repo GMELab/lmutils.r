@@ -161,6 +161,33 @@ fn file_or_matrix_list(data: Robj) -> Result<Vec<(String, lmutils::Matrix<'stati
     }
 }
 
+fn maybe_mutating_return(
+    mut data: Matrix<'static>,
+    out: Nullable<Robj>,
+    f: impl FnOnce(Matrix<'static>) -> Result<Matrix<'static>>,
+) -> Result<Robj> {
+    if let NotNull(ref out) = out {
+        if out.is_string() {
+            data.into_owned()?;
+        } else if out.is_logical() {
+            if out.as_logical().unwrap().is_true() {
+                data.into_owned()?;
+            }
+        } else {
+            return Err("out must be a string or a logical".into());
+        }
+    }
+    let mat = f(data)?;
+    if let NotNull(out) = out {
+        if out.is_string() {
+            File::from_str(out.as_str().unwrap())?.write_matrix(&mat.to_owned()?)?;
+        } else if out.is_logical() && out.as_logical().unwrap().is_true() {
+            return Ok(mat.into_robj()?);
+        }
+    }
+    Ok(().into())
+}
+
 /// Convert files from one format to another.
 /// `from` and `to` must be character vectors of the same length.
 /// @export
@@ -526,33 +553,15 @@ pub fn to_matrix_dir(from: &str, to: Nullable<&str>, file_type: &str) -> Result<
 /// `data` is a string file name or a matrix.
 /// `out` is a file name to write the normalized matrix to, `TRUE` to return the normalized matrix
 /// instead of mutating, or `NULL` to mutate the matrix passed in if it's an R matrix.
-/// If `data` is an R matrix and `out` is not `NULL`, then the matrix is mutated to reuse memory.
 /// @export
 #[extendr]
 pub fn standardize(data: Robj, out: Nullable<Robj>) -> Result<Robj> {
     init();
 
-    let mut data = file_or_matrix(data)?;
-    if let NotNull(ref out) = out {
-        if out.is_string() {
-            data.into_owned()?;
-        } else if out.is_logical() {
-            if out.as_logical().unwrap().is_true() {
-                data.into_owned()?;
-            }
-        } else {
-            return Err("out must be a string or a logical".into());
-        }
-    }
-    let mat = data.nan_to_mean().standardization().transform()?;
-    if let NotNull(out) = out {
-        if out.is_string() {
-            File::from_str(out.as_str().unwrap())?.write_matrix(&mat.to_owned()?)?;
-        } else if out.is_logical() && out.as_logical().unwrap().is_true() {
-            return Ok(mat.into_robj()?);
-        }
-    }
-    Ok(().into())
+    let data = file_or_matrix(data)?;
+    maybe_mutating_return(data, out, |data| {
+        Ok(data.nan_to_mean().standardization().transform()?)
+    })
 }
 
 /// Load a matrix from a file.
@@ -596,6 +605,27 @@ pub fn column_p_values(data: Robj, outcomes: Robj) -> Result<Robj> {
         outcome = res.iter().map(|r| r.outcome()).collect::<Vec<_>>()
     )
     .into_robj())
+}
+
+/// Match the rows of a matrix to the values in a vector by a column.
+/// `data` is a string file name or a matrix.
+/// `to` is a numeric vector.
+/// `by` is the column to match by.
+/// `out` is a file name to write the matched matrix to or `NULL` to return the matched matrix.
+/// @export
+#[extendr]
+pub fn match_rows(data: Robj, to: &[f64], by: &str, out: Nullable<&str>) -> Result<Robj> {
+    init();
+
+    let data = file_or_matrix(data)?;
+    let mut data = data.to_owned()?;
+    data.match_to(to, by);
+    if let NotNull(out) = out {
+        File::from_str(out)?.write_matrix(&data)?;
+        Ok(().into())
+    } else {
+        Ok(data.into_matrix().into_robj()?)
+    }
 }
 
 /// Set the log level.
@@ -642,6 +672,7 @@ extendr_module! {
     fn standardize;
     fn load_matrix;
     fn column_p_values;
+    fn match_rows;
 
     fn set_log_level;
     fn set_num_main_threads;
