@@ -109,7 +109,6 @@ pub fn combine_matrices(files: &[Rstr], out: &str) -> Result<()> {
         .into_iter()
         .flat_map(|(_, data)| data)
         .collect::<Vec<_>>();
-    println!("{:?}", data);
     out.write_matrix(&Matrix {
         data,
         rows,
