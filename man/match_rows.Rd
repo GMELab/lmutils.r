@@ -4,16 +4,16 @@
 \alias{match_rows}
 \title{Match the rows of a matrix to the values in a vector by a column.
 \code{data} is a string file name or a matrix.
-\code{to} is a numeric vector.
+\code{with} is a numeric vector.
 \code{by} is the column to match by.
 \code{out} is a file name to write the matched matrix to or \code{NULL} to return the matched matrix.}
 \usage{
-match_rows(data, to, by, out)
+match_rows(data, with, by, out)
 }
 \description{
 Match the rows of a matrix to the values in a vector by a column.
 \code{data} is a string file name or a matrix.
-\code{to} is a numeric vector.
+\code{with} is a numeric vector.
 \code{by} is the column to match by.
 \code{out} is a file name to write the matched matrix to or \code{NULL} to return the matched matrix.
 }

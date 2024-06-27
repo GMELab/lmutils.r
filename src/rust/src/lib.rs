@@ -188,6 +188,23 @@ fn maybe_mutating_return(
     Ok(().into())
 }
 
+fn list_files(dir: &Path) -> std::io::Result<Vec<PathBuf>> {
+    Ok(std::fs::read_dir(dir)?
+        .flat_map(|entry| {
+            entry.map(|entry| entry.path()).map(|path| {
+                if path.is_file() {
+                    Ok(vec![path])
+                } else {
+                    list_files(&path)
+                }
+            })
+        })
+        .collect::<std::io::Result<Vec<_>>>()?
+        .into_iter()
+        .flatten()
+        .collect::<Vec<_>>())
+}
+
 /// Convert files from one format to another.
 /// `from` and `to` must be character vectors of the same length.
 /// @export
@@ -485,22 +502,6 @@ pub fn to_matrix_dir(from: &str, to: Nullable<&str>, file_type: &str) -> Result<
     });
     debug!("converting files from {} to {}", from, to.display());
     std::fs::create_dir_all(to).unwrap();
-    fn list_files(dir: &Path) -> std::io::Result<Vec<PathBuf>> {
-        Ok(std::fs::read_dir(dir)?
-            .flat_map(|entry| {
-                entry.map(|entry| entry.path()).map(|path| {
-                    if path.is_file() {
-                        Ok(vec![path])
-                    } else {
-                        list_files(&path)
-                    }
-                })
-            })
-            .collect::<std::io::Result<Vec<_>>>()?
-            .into_iter()
-            .flatten()
-            .collect::<Vec<_>>())
-    }
     let files = Mutex::new(list_files(Path::new(from)).unwrap());
     std::thread::scope(|s| {
         for _ in 0..get_num_main_threads() {
@@ -609,23 +610,88 @@ pub fn column_p_values(data: Robj, outcomes: Robj) -> Result<Robj> {
 
 /// Match the rows of a matrix to the values in a vector by a column.
 /// `data` is a string file name or a matrix.
-/// `to` is a numeric vector.
+/// `with` is a numeric vector.
 /// `by` is the column to match by.
 /// `out` is a file name to write the matched matrix to or `NULL` to return the matched matrix.
 /// @export
 #[extendr]
-pub fn match_rows(data: Robj, to: &[f64], by: &str, out: Nullable<&str>) -> Result<Robj> {
+pub fn match_rows(data: Robj, with: &[f64], by: &str, out: Nullable<&str>) -> Result<Robj> {
     init();
 
     let data = file_or_matrix(data)?;
     let mut data = data.to_owned()?;
-    data.match_to(to, by);
+    data.match_to(with, by);
     if let NotNull(out) = out {
         File::from_str(out)?.write_matrix(&data)?;
         Ok(().into())
     } else {
         Ok(data.into_matrix().into_robj()?)
     }
+}
+
+/// Recursively matches the rows of a directory of matrices to the values in a vector by a column.
+/// `from` is the directory to read from.
+/// `to` is the directory to write to.
+/// `with` is a numeric vector.
+/// `by` is the column to match by.
+/// @export
+#[extendr]
+pub fn match_rows_dir(from: &str, to: &str, with: &[f64], by: &str) -> Result<()> {
+    init();
+
+    let to = Path::new(to);
+    let with = with
+        .iter()
+        .map(|x| x.to_string())
+        .collect::<Vec<_>>()
+        .join(",");
+
+    debug!("matching files from {} to {}", from, to.display());
+    std::fs::create_dir_all(to).unwrap();
+    let files = Mutex::new(list_files(Path::new(from)).unwrap());
+    std::thread::scope(|s| {
+        for _ in 0..get_num_main_threads() {
+            s.spawn(|| loop {
+                let mut guard = files.lock().unwrap();
+                let file = guard.pop();
+                drop(guard);
+                if let Some(file) = file {
+                    let from_file = file.to_str().unwrap();
+                    let to_file = to.join(
+                        from_file
+                            .strip_prefix(from)
+                            .unwrap()
+                            .trim_matches('/')
+                            .trim_matches('\\'),
+                    );
+                    debug!("matching {} as {}", from_file, to_file.display());
+                    std::fs::create_dir_all(to_file.parent().unwrap()).unwrap();
+                    let to_file = to_file.to_str().unwrap();
+                    let output = Command::new("Rscript")
+                        .arg("-e")
+                        .arg(format!(
+                            "lmutils::match_rows('{}', c({}), '{}', '{}')",
+                            from_file, with, by, to_file
+                        ))
+                        .stdout(std::process::Stdio::piped())
+                        .stderr(std::process::Stdio::piped())
+                        .output()
+                        .expect("failed to execute process");
+                    if output.status.code().is_none() || output.status.code().unwrap() != 0 {
+                        error!("failed to match {}", from_file);
+                        error!("STDOUT: {}", String::from_utf8_lossy(&output.stdout));
+                        error!("STDERR: {}", String::from_utf8_lossy(&output.stderr));
+                    } else {
+                        info!("matched {} as {}", from_file, to_file)
+                    }
+                } else {
+                    break;
+                }
+            });
+        }
+    });
+
+    Ok(())
 }
 
 /// Set the log level.
@@ -673,6 +739,7 @@ extendr_module! {
     fn load_matrix;
     fn column_p_values;
     fn match_rows;
+    fn match_rows_dir;
 
     fn set_log_level;
     fn set_num_main_threads;

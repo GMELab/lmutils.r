@@ -100,11 +100,19 @@ column_p_values <- function(data, outcomes) .Call(wrap__column_p_values, data, o
 
 #' Match the rows of a matrix to the values in a vector by a column.
 #' `data` is a string file name or a matrix.
-#' `to` is a numeric vector.
+#' `with` is a numeric vector.
 #' `by` is the column to match by.
 #' `out` is a file name to write the matched matrix to or `NULL` to return the matched matrix.
 #' @export
-match_rows <- function(data, to, by, out) .Call(wrap__match_rows, data, to, by, out)
+match_rows <- function(data, with, by, out) .Call(wrap__match_rows, data, with, by, out)
+
+#' Recursively matches the rows of a directory of matrices to the values in a vector by a column.
+#' `from` is the directory to read from.
+#' `to` is the directory to write to.
+#' `with` is a numeric vector.
+#' `by` is the column to match by.
+#' @export
+match_rows_dir <- function(from, to, with, by) .Call(wrap__match_rows_dir, from, to, with, by)
 
 #' Set the log level.
 #' `level` is the log level.

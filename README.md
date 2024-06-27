@@ -257,6 +257,27 @@ lmutils::match_rows(
 )
 ```
 
+### `lmutils::match_rows_dir`
+
+Matches rows of all matrices in a directory to the values in a vector by a column.
+
+The first argument is a string directory name to read the matrices from.
+
+The second argument is a string directory name to write the matched matrices to.
+
+The third argument is a numeric vector to match the rows to.
+
+The fourth argument is the column name to match the rows by.
+
+```r
+lmutils::match_rows_dir(
+    "matrices",
+    "matched_matrices",
+    c(1, 2, 3),
+    "eid",
+)
+```
+
 ## Configuration
 
 `lmutils` exposes three global config options that can be set using environment variables or the `lmutils` package functions:
