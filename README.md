@@ -278,6 +278,109 @@ lmutils::match_rows_dir(
 )
 ```
 
+### `lmutils::new_column_from_regex`
+
+Compute a new column for a data frame from a regex and an existing column.
+
+The first argument is a data frame to read from.
+
+The second argument is the column name to read from.
+
+The third argument is the regex to match.
+
+The fourth argument is the column name to write to.
+
+```r
+lmutils::new_column_from_regex(
+    data.frame(a=c("a1", "b2", "c3")),
+    "a",
+    "([a-z])",
+    "b",
+)
+```
+
+### `lmutils::map_from_pairs`
+
+Converts two character vectors into a named list, where the first vector is the names and the second vector is the values. Only the first occurrence of each name is used, essentially creating a map.
+
+The first argument is a character vector of names.
+
+The second argument is a character vector of values.
+
+```r
+lmutils::map_from_pairs(
+    c("a", "b", "c"),
+    c("1", "2", "3"),
+)
+```
+
+### `lmutils::new_column_from_map`
+
+Compute a new column for a data frame from a list of values and an existing column, matching by the names of the values.
+
+The first argument is a data frame to read from.
+
+The second argument is the column name to read from.
+
+The third argument is a named list of values.
+
+The fourth argument is the column name to write to.
+
+```r
+lmutils::new_column_from_map(
+    data.frame(a=c("a", "b", "c")),
+    "a",
+    lmutils::map_from_pairs(
+        c("a", "b", "c"),
+        c("1", "2", "3"),
+    ),
+    "b",
+)
+```
+
+### `lmutils::new_column_from_map_pairs`
+
+Compute a new column for a data frame from two character vectors of names and values, matching by the names.
+
+The first argument is a data frame to read from.
+
+The second argument is the column name to read from.
+
+The third argument is a character vector of names.
+
+The fourth argument is a character vector of values.
+
+The fifth argument is the column name to write to.
+
+```r
+lmutils::new_column_from_map_pairs(
+    data.frame(a=c("a", "b", "c")),
+    "a",
+    c("a", "b", "c"),
+    c("1", "2", "3"),
+    "b",
+)
+```
+
+### `lmutils::df_sort_asc`
+
+Mutably sorts a data frame in ascending order by multiple columns in ascending order. All columns must be numeric (double or integer), character, or logical vectors.
+
+The first argument is a data frame to sort.
+
+The second argument is a character vector of column names to sort by.
+
+```r
+df <- data.frame(a=c(3, 3, 2, 2, 1, 1), b=c("b", "a", "b", "a", "b", "a"))
+lmutils::df_sort_asc(
+    df,
+    c("a", "b"),
+)
+```
+
+
+
+
 ## Configuration
 
 `lmutils` exposes three global config options that can be set using environment variables or the `lmutils` package functions:

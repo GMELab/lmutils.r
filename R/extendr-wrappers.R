@@ -114,6 +114,47 @@ match_rows <- function(data, with, by, out) .Call(wrap__match_rows, data, with, 
 #' @export
 match_rows_dir <- function(from, to, with, by) .Call(wrap__match_rows_dir, from, to, with, by)
 
+#' Compute a new column for a data frame from a regex and an existing column.
+#' `df` is a data frame.
+#' `column` is the column to match.
+#' `regex` is the regex to match, the first capture group is used.
+#' `new_column` is the new column to create.
+#' This function uses the Rust flavor of regex, see https://docs.rs/regex/latest/regex/#syntax for more /* information */.
+#' @export
+new_column_from_regex <- function(df, column, regex, new_column) .Call(wrap__new_column_from_regex, df, column, regex, new_column)
+
+#' Converts two character vectors to a list with the first vector as the names and the second as the values,
+#' only keeping the first occurrence of each name. Essentially creates a hash map.
+#' `names` is a character vector of names.
+#' `values` is a list of values.
+#' @export
+map_from_pairs <- function(names, values) .Call(wrap__map_from_pairs, names, values)
+
+#' Add a new column to a data frame from a list of values, matching by the names of the values.
+#' `df` is a data frame.
+#' `column` is the column to match.
+#' `values` is a list of values (a map like from `lmutils::map_from_pairs`)
+#' `new_column` is the new column to create.
+#' @export
+new_column_from_map <- function(df, column, values, new_column) .Call(wrap__new_column_from_map, df, column, values, new_column)
+
+#' Add a new column to a data frame from two character vectors of names and values, matching by
+#' the names.
+#' `df` is a data frame.
+#' `column` is the column to match.
+#' `names` is a character vector of names.
+#' `values` is a character vector of values.
+#' `new_column` is the new column to create.
+#' @export
+new_column_from_map_pairs <- function(df, column, names, values, new_column) .Call(wrap__new_column_from_map_pairs, df, column, names, values, new_column)
+
+#' Mutably sorts a data frame by multiple columns in ascending order. All columns must be
+#' be numeric (double or integer), character, or logical vectors.
+#' `df` is a data frame.
+#' `columns` is a character vector of columns to sort by.
+#' @export
+df_sort_asc <- function(df, columns) .Call(wrap__df_sort_asc, df, columns)
+
 #' Set the log level.
 #' `level` is the log level.
 #' @export

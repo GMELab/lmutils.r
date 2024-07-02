@@ -1,6 +1,7 @@
 use core::panic;
 use std::{
-    collections::HashSet,
+    cmp::Ordering,
+    collections::{HashMap, HashSet},
     io::Read,
     path::{Path, PathBuf},
     process::Command,
@@ -8,10 +9,13 @@ use std::{
     sync::Mutex,
 };
 
-use extendr_api::{io::Load, prelude::*};
+use extendr_api::{io::Load, prelude::*, AsTypedSlice};
 use lmutils::{File, IntoMatrix, Matrix, OwnedMatrix, ToRMatrix, Transform};
 use log::{debug, error, info};
-use rayon::{iter::ParallelIterator, slice::ParallelSlice};
+use rayon::{
+    iter::{IntoParallelRefIterator, ParallelIterator},
+    slice::{ParallelSlice, ParallelSliceMut},
+};
 
 fn init() {
     let _ =
@@ -694,6 +698,230 @@ pub fn match_rows_dir(from: &str, to: &str, with: &[f64], by: &str) -> Result<()
     Ok(())
 }
 
+/// Compute a new column for a data frame from a regex and an existing column.
+/// `df` is a data frame.
+/// `column` is the column to match.
+/// `regex` is the regex to match, the first capture group is used.
+/// `new_column` is the new column to create.
+/// This function uses the Rust flavor of regex, see https://docs.rs/regex/latest/regex/#syntax for more /* information */.
+/// @export
+#[extendr]
+pub fn new_column_from_regex(
+    df: List,
+    column: &str,
+    regex: &str,
+    new_column: &str,
+) -> Result<Robj> {
+    init();
+
+    let (_, column) = df
+        .iter()
+        .find(|(n, _)| *n == column)
+        .unwrap_or_else(|| panic!("column {} not found", column));
+    let column = column
+        .as_str_vector()
+        .expect("column should be a character vector");
+    let re = regex::Regex::new(regex).unwrap();
+    let column = column
+        .par_iter()
+        .map(|s| {
+            re.captures(s)
+                .map(|c| c.get(1).expect("expected at least one match").as_str())
+                .unwrap_or_else(|| panic!("could not match regex to value {}", s))
+        })
+        .collect::<Vec<_>>();
+    let mut pairs = df.iter().collect::<Vec<_>>();
+    pairs.push((new_column, column.into()));
+    let names = pairs.iter().map(|(n, _)| n).collect::<Vec<_>>();
+    let values = pairs.iter().map(|(_, v)| v).collect::<Vec<_>>();
+    let l = List::from_names_and_values(names, values)?;
+    R!("as.data.frame({{l}})")
+}
+
+/// Converts two character vectors to a list with the first vector as the names and the second as the values,
+/// only keeping the first occurrence of each name. Essentially creates a hash map.
+/// `names` is a character vector of names.
+/// `values` is a list of values.
+/// @export
+#[extendr]
+pub fn map_from_pairs(names: &[Rstr], values: &[Rstr]) -> Result<Robj> {
+    let mut map = HashMap::new();
+    for (name, value) in names.iter().zip(values.iter()).rev() {
+        map.insert(name.as_str(), value.as_str());
+    }
+    let mut list = List::from_values(map.values());
+    list.set_names(map.into_keys())?;
+    Ok(list.into_robj())
+}
+
+fn new_column_from_map_aux(
+    df: List,
+    map: HashMap<&str, &str>,
+    column: Vec<&str>,
+    new_column: &str,
+) -> Result<Robj> {
+    let column = column
+        .par_iter()
+        .map(|s| {
+            map.get(s)
+                .unwrap_or_else(|| panic!("could not find value for {}", s))
+        })
+        .collect::<Vec<_>>();
+    let mut pairs = df.iter().collect::<Vec<_>>();
+    pairs.push((new_column, column.into()));
+    let names = pairs.iter().map(|(n, _)| n).collect::<Vec<_>>();
+    let values = pairs.iter().map(|(_, v)| v).collect::<Vec<_>>();
+    let l = List::from_names_and_values(names, values)?;
+    R!("as.data.frame({{l}})")
+}
+
+/// Add a new column to a data frame from a list of values, matching by the names of the values.
+/// `df` is a data frame.
+/// `column` is the column to match.
+/// `values` is a list of values (a map like from `lmutils::map_from_pairs`)
+/// `new_column` is the new column to create.
+/// @export
+#[extendr]
+pub fn new_column_from_map(df: List, column: &str, values: List, new_column: &str) -> Result<Robj> {
+    let (_, column) = df
+        .iter()
+        .find(|(n, _)| *n == column)
+        .unwrap_or_else(|| panic!("column {} not found", column));
+    let column = column
+        .as_str_vector()
+        .expect("column should be a character vector");
+    let mut map = HashMap::new();
+    for (name, value) in values.iter() {
+        map.insert(name, value.as_str().unwrap());
+    }
+    new_column_from_map_aux(df, map, column, new_column)
+}
+
+/// Add a new column to a data frame from two character vectors of names and values, matching by
+/// the names.
+/// `df` is a data frame.
+/// `column` is the column to match.
+/// `names` is a character vector of names.
+/// `values` is a character vector of values.
+/// `new_column` is the new column to create.
+/// @export
+#[extendr]
+pub fn new_column_from_map_pairs(
+    df: List,
+    column: &str,
+    names: &[Rstr],
+    values: &[Rstr],
+    new_column: &str,
+) -> Result<Robj> {
+    let (_, column) = df
+        .iter()
+        .find(|(n, _)| *n == column)
+        .unwrap_or_else(|| panic!("column {} not found", column));
+    let column = column
+        .as_str_vector()
+        .expect("column should be a character vector");
+    let mut map = HashMap::new();
+    for (name, value) in names.iter().zip(values.iter()).rev() {
+        map.insert(name.as_str(), value.as_str());
+    }
+    new_column_from_map_aux(df, map, column, new_column)
+}
+
+enum Col<'a> {
+    Str(Vec<&'a str>),
+    Int(&'a [i32]),
+    Real(&'a [f64]),
+    Logical(&'a [Rbool]),
+}
+
+unsafe impl<'a> Send for Col<'a> {}
+
+impl<'a> Col<'a> {
+    fn cmp(&self, i: usize, j: usize) -> Ordering {
+        match self {
+            Col::Str(v) => v[i].cmp(v[j]),
+            Col::Int(v) => v[i].cmp(&v[j]),
+            Col::Real(v) => v[i].partial_cmp(&v[j]).unwrap(),
+            Col::Logical(v) => v[i].inner().cmp(&v[j].inner()),
+        }
+    }
+
+    fn len(&self) -> usize {
+        match self {
+            Col::Str(v) => v.len(),
+            Col::Int(v) => v.len(),
+            Col::Real(v) => v.len(),
+            Col::Logical(v) => v.len(),
+        }
+    }
+}
+
+/// Mutably sorts a data frame by multiple columns in ascending order. All columns must be
+/// be numeric (double or integer), character, or logical vectors.
+/// `df` is a data frame.
+/// `columns` is a character vector of columns to sort by.
+/// @export
+#[extendr]
+pub fn df_sort_asc(df: List, columns: &[Rstr]) -> Result<Robj> {
+    let mut names = df.iter().collect::<Vec<_>>();
+    let cols = columns
+        .iter()
+        .map(|c| {
+            let (_, col) = names
+                .iter()
+                .find(|(n, _)| *n == c.as_str())
+                .unwrap_or_else(|| panic!("column {} not found", c.as_str()));
+            if col.is_string() {
+                Col::Str(col.as_str_vector().unwrap())
+            } else if col.is_integer() {
+                Col::Int(col.as_integer_slice().unwrap())
+            } else if col.is_real() {
+                Col::Real(col.as_real_slice().unwrap())
+            } else if col.is_logical() {
+                Col::Logical(col.as_logical_slice().unwrap())
+            } else {
+                panic!(
+                    "column {} must be a character, integer, real, or logical vector",
+                    c.as_str()
+                )
+            }
+        })
+        .collect::<Vec<_>>();
+    let mut indices = (0..cols[0].len()).collect::<Vec<_>>();
+    indices.as_parallel_slice_mut().par_sort_by(|&i, &j| {
+        cols.iter().fold(Ordering::Equal, |acc, col| {
+            if acc == Ordering::Equal {
+                col.cmp(i, j)
+            } else {
+                acc
+            }
+        })
+    });
+    for (_, col) in names.iter_mut() {
+        if col.is_string() {
+            let slice: &mut [Rstr] = col.as_typed_slice_mut().unwrap();
+            let new = indices
+                .iter()
+                .map(|&i| unsafe { slice.get_unchecked(i) }.clone())
+                .collect::<Vec<_>>();
+            slice.clone_from_slice(new.as_slice());
+        } else if col.is_integer() {
+            let slice: &mut [i32] = col.as_typed_slice_mut().unwrap();
+            let new = indices.iter().map(|&i| slice[i]).collect::<Vec<_>>();
+            slice.copy_from_slice(&new);
+        } else if col.is_real() {
+            let slice: &mut [f64] = col.as_typed_slice_mut().unwrap();
+            let new = indices.iter().map(|&i| slice[i]).collect::<Vec<_>>();
+            slice.copy_from_slice(&new);
+        } else if col.is_logical() {
+            let slice: &mut [Rbool] = col.as_typed_slice_mut().unwrap();
+            let new = indices.iter().map(|&i| slice[i]).collect::<Vec<_>>();
+            slice.clone_from_slice(&new);
+        }
+    }
+    Ok(().into())
+}
+
 /// Set the log level.
 /// `level` is the log level.
 /// @export
@@ -740,6 +968,11 @@ extendr_module! {
     fn column_p_values;
     fn match_rows;
     fn match_rows_dir;
+    fn new_column_from_regex;
+    fn map_from_pairs;
+    fn new_column_from_map;
+    fn new_column_from_map_pairs;
+    fn df_sort_asc;
 
     fn set_log_level;
     fn set_num_main_threads;
