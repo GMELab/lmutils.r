@@ -3,6 +3,7 @@ use std::{
     cmp::Ordering,
     collections::{HashMap, HashSet},
     io::Read,
+    mem::MaybeUninit,
     path::{Path, PathBuf},
     process::Command,
     str::FromStr,
@@ -93,6 +94,11 @@ fn file_or_matrix(data: Robj) -> Result<lmutils::Matrix<'static>> {
         Ok(RMatrix::<f64>::try_from(data)
             .expect("data is a matrix")
             .into())
+    } else if data.is_list() {
+        Ok(R!("as.matrix(sapply({{data}}, as.double))")?
+            .as_matrix::<f64>()
+            .unwrap()
+            .into_matrix())
     } else if data.is_integer() {
         let v = data
             .as_integer_slice()
@@ -114,6 +120,19 @@ fn file_or_matrix_list(data: Robj) -> Result<Vec<(String, lmutils::Matrix<'stati
         let data = data.as_list().expect("data is a list");
         if data.len() == 0 {
             return Err(CALCULATE_R2_DATA_MUST_BE.into());
+        }
+        if data
+            .class()
+            .map(|x| x.into_iter().any(|c| c == "data.frame"))
+            .unwrap_or(false)
+        {
+            return Ok(vec![(
+                "1".to_string(),
+                R!("as.matrix(sapply({{data}}, as.double))")?
+                    .as_matrix::<f64>()
+                    .unwrap()
+                    .into_matrix(),
+            )]);
         }
         data.into_iter()
             .enumerate()
@@ -158,6 +177,21 @@ fn file_or_matrix_list(data: Robj) -> Result<Vec<(String, lmutils::Matrix<'stati
                         },
                         Matrix::Owned(OwnedMatrix::new(v.len(), 1, v, None)),
                     ))
+                } else if r.is_list() {
+                    if r.class()
+                        .map(|x| x.into_iter().any(|c| c == "data.frame"))
+                        .unwrap_or(false)
+                    {
+                        return Ok((
+                            (i + 1).to_string(),
+                            R!("as.matrix(sapply({{r}}, as.double))")?
+                                .as_matrix::<f64>()
+                                .unwrap()
+                                .into_matrix(),
+                        ));
+                    } else {
+                        Err(CALCULATE_R2_DATA_MUST_BE.into())
+                    }
                 } else {
                     Err(CALCULATE_R2_DATA_MUST_BE.into())
                 }
@@ -972,7 +1006,7 @@ pub fn combine_vectors(data: List, out: Nullable<&str>) -> Result<Nullable<RMatr
         .next()
         .unwrap_or(0);
     let data = data.iter().map(|(_, v)| RobjPar(v)).collect::<Vec<_>>();
-    let mut mat = vec![0.0; ncols * nrows];
+    let mut mat = vec![MaybeUninit::uninit(); ncols * nrows];
     mat.par_chunks_exact_mut(nrows)
         .zip(data.into_par_iter())
         .for_each(|(data, v)| {
@@ -980,10 +1014,16 @@ pub fn combine_vectors(data: List, out: Nullable<&str>) -> Result<Nullable<RMatr
             if v.len() != nrows {
                 panic!("all vectors must have the same length");
             }
+            let v: &[MaybeUninit<f64>] = unsafe { std::mem::transmute(v) };
             data.copy_from_slice(v);
         });
 
-    let mat = Matrix::Owned(OwnedMatrix::new(nrows, ncols, mat, None));
+    let mat = Matrix::Owned(OwnedMatrix::new(
+        nrows,
+        ncols,
+        unsafe { std::mem::transmute(mat) },
+        None,
+    ));
     if let NotNull(out) = out {
         save_matrix(mat.to_rmatrix()?, out)?;
         Ok(Nullable::Null)
