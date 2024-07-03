@@ -378,8 +378,22 @@ lmutils::df_sort_asc(
 )
 ```
 
+### `lmutils::combine_vectors`
 
+Combine a list of double vectors into a single matrix.
 
+The first argument is a list of double vectors.
+
+The second argument is a string file name to write the matrix to.
+
+If the second argument is `NULL`, the function will return the matrix.
+
+```r
+lmutils::combine_vectors(
+    list(1:3, 4:6),
+    "combined_matrix.csv",
+)
+```
 
 ## Configuration
 

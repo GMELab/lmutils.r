@@ -155,6 +155,12 @@ new_column_from_map_pairs <- function(df, column, names, values, new_column) .Ca
 #' @export
 df_sort_asc <- function(df, columns) .Call(wrap__df_sort_asc, df, columns)
 
+#' Combine a list of double vectors into a matrix.
+#' `data` is a list of double vectors.
+#' `out` is a file name to write the matrix to or `NULL` to return the matrix.
+#' @export
+combine_vectors <- function(data, out) .Call(wrap__combine_vectors, data, out)
+
 #' Set the log level.
 #' `level` is the log level.
 #' @export

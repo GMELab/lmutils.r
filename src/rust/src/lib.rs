@@ -9,13 +9,46 @@ use std::{
     sync::Mutex,
 };
 
-use extendr_api::{io::Load, prelude::*, AsTypedSlice};
+use extendr_api::{io::Load, prelude::*, AsTypedSlice, Deref, DerefMut};
 use lmutils::{File, IntoMatrix, Matrix, OwnedMatrix, ToRMatrix, Transform};
 use log::{debug, error, info};
 use rayon::{
-    iter::{IntoParallelRefIterator, ParallelIterator},
+    iter::{
+        IndexedParallelIterator, IntoParallelIterator, IntoParallelRefIterator,
+        IntoParallelRefMutIterator, ParallelIterator,
+    },
     slice::{ParallelSlice, ParallelSliceMut},
 };
+
+struct RobjPar(pub Robj);
+
+impl From<RobjPar> for Robj {
+    fn from(obj: RobjPar) -> Self {
+        obj.0
+    }
+}
+
+impl From<Robj> for RobjPar {
+    fn from(obj: Robj) -> Self {
+        RobjPar(obj)
+    }
+}
+
+impl Deref for RobjPar {
+    type Target = Robj;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl DerefMut for RobjPar {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.0
+    }
+}
+
+unsafe impl Send for RobjPar {}
 
 fn init() {
     let _ =
@@ -863,7 +896,7 @@ impl<'a> Col<'a> {
 /// @export
 #[extendr]
 pub fn df_sort_asc(df: List, columns: &[Rstr]) -> Result<Robj> {
-    let mut names = df.iter().collect::<Vec<_>>();
+    let mut names = df.iter().map(|(n, r)| (n, RobjPar(r))).collect::<Vec<_>>();
     let cols = columns
         .iter()
         .map(|c| {
@@ -897,7 +930,7 @@ pub fn df_sort_asc(df: List, columns: &[Rstr]) -> Result<Robj> {
             }
         })
     });
-    for (_, col) in names.iter_mut() {
+    names.par_iter_mut().for_each(|(_, col)| {
         if col.is_string() {
             let slice: &mut [Rstr] = col.as_typed_slice_mut().unwrap();
             let new = indices
@@ -918,8 +951,45 @@ pub fn df_sort_asc(df: List, columns: &[Rstr]) -> Result<Robj> {
             let new = indices.iter().map(|&i| slice[i]).collect::<Vec<_>>();
             slice.clone_from_slice(&new);
         }
-    }
+    });
     Ok(().into())
+}
+
+/// Combine a list of double vectors into a matrix.
+/// `data` is a list of double vectors.
+/// `out` is a file name to write the matrix to or `NULL` to return the matrix.
+/// @export
+#[extendr]
+pub fn combine_vectors(data: List, out: Nullable<&str>) -> Result<Nullable<RMatrix<f64>>> {
+    let ncols = data.len();
+    let nrows = data
+        .iter()
+        .map(|(_, v)| {
+            v.as_real_vector()
+                .expect("all vectors must be doubles")
+                .len()
+        })
+        .next()
+        .unwrap_or(0);
+    let data = data.iter().map(|(_, v)| RobjPar(v)).collect::<Vec<_>>();
+    let mut mat = vec![0.0; ncols * nrows];
+    mat.par_chunks_exact_mut(nrows)
+        .zip(data.into_par_iter())
+        .for_each(|(data, v)| {
+            let v = v.as_real_slice().expect("all vectors must be doubles");
+            if v.len() != nrows {
+                panic!("all vectors must have the same length");
+            }
+            data.copy_from_slice(v);
+        });
+
+    let mat = Matrix::Owned(OwnedMatrix::new(nrows, ncols, mat, None));
+    if let NotNull(out) = out {
+        save_matrix(mat.to_rmatrix()?, out)?;
+        Ok(Nullable::Null)
+    } else {
+        Ok(Nullable::NotNull(mat.to_rmatrix()?))
+    }
 }
 
 /// Set the log level.
@@ -973,6 +1043,7 @@ extendr_module! {
     fn new_column_from_map;
     fn new_column_from_map_pairs;
     fn df_sort_asc;
+    fn combine_vectors;
 
     fn set_log_level;
     fn set_num_main_threads;
