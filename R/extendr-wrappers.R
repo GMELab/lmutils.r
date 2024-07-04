@@ -168,6 +168,13 @@ combine_vectors <- function(data, out) .Call(wrap__combine_vectors, data, out)
 #' @export
 extend_matrices <- function(data, out) .Call(wrap__extend_matrices, data, out)
 
+#' Deduplicate a matrix by a column. The first occurrence of each value is kept.
+#' `data` is a string file name or a matrix.
+#' `by` is the column to deduplicate by.
+#' `out` is a file name to write the deduplicated matrix to or `NULL` to return the deduplicated matrix.
+#' @export
+dedup <- function(data, by, out) .Call(wrap__dedup, data, by, out)
+
 #' Set the log level.
 #' `level` is the log level.
 #' @export

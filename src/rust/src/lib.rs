@@ -1043,6 +1043,29 @@ pub fn extend_matrices(data: Robj, out: Nullable<&str>) -> Result<Nullable<Robj>
     }
 }
 
+/// Deduplicate a matrix by a column. The first occurrence of each value is kept.
+/// `data` is a string file name or a matrix.
+/// `by` is the column to deduplicate by.
+/// `out` is a file name to write the deduplicated matrix to or `NULL` to return the deduplicated matrix.
+/// @export
+#[extendr]
+pub fn dedup(data: Robj, by: &str, out: Nullable<&str>) -> Result<Nullable<Robj>> {
+    init();
+
+    let mut data = file_or_matrix(data)?.to_owned()?;
+    let out = match out {
+        Null => None,
+        NotNull(out) => Some(lmutils::File::from_str(out)?),
+    };
+    data.dedup_by_column(by);
+    if let Some(out) = out {
+        out.write_matrix(&data)?;
+        Ok(Nullable::Null)
+    } else {
+        Ok(Nullable::NotNull(data.into_matrix().into_robj()?))
+    }
+}
+
 /// Set the log level.
 /// `level` is the log level.
 /// @export
@@ -1096,6 +1119,7 @@ extendr_module! {
     fn df_sort_asc;
     fn combine_vectors;
     fn extend_matrices;
+    fn dedup;
 
     fn set_log_level;
     fn set_num_main_threads;

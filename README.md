@@ -395,6 +395,43 @@ lmutils::combine_vectors(
 )
 ```
 
+### `lmutils::extend_matrices`
+
+Extend matrices into a single matrix by rows.
+
+The first argument is a character vector of file names to read the matrices from or a list of matrices.
+
+The second argument is a string file name to write the extended matrix to.
+
+If the second argument is `NULL`, the function will return the extended matrix.
+
+```r
+lmutils::extend_matrices(
+    c("matrix1.csv", "matrix2.rkyv.gz"),
+    "extended_matrix.rkyv.gz",
+)
+```
+
+### `lmutils::dedup`
+
+Deduplicate a matrix by a row. The first occurrence of each value is kept.
+
+The first argument is a string file name or a matrix to read the matrix from.
+
+The second argument is the column name to deduplicate by.
+
+The third argument is a string file name to write the new matrix to.
+
+If the third argument is `NULL`, the function will return the new matrix.
+
+```r
+lmutils::dedup(
+    "matrix1.csv",
+    "eid",
+    "matrix1_dedup.csv",
+)
+```
+
 ## Configuration
 
 `lmutils` exposes three global config options that can be set using environment variables or the `lmutils` package functions:
