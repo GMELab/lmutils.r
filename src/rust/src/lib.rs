@@ -411,9 +411,6 @@ pub fn calculate_r2_ranges(data: Robj, outcomes: Robj, ranges: RMatrix<u32>) -> 
     Ok(df.into_robj())
 }
 
-const COMBINE_MATRICES_DATA_MUST_BE: &str =
-    "data must be a character vector of file names or a list of matrices";
-
 /// Combine matrices into a single matrix by columns.
 /// `data` is a character vector of file names or a list of matrices.
 /// `out` is a file name to write the combined matrix to.
@@ -621,10 +618,20 @@ pub fn standardize(data: Robj, out: Nullable<Robj>) -> Result<Robj> {
 /// `file` is the name of the file to load from.
 /// @export
 #[extendr]
-pub fn load_matrix(file: &str) -> Result<RMatrix<f64>> {
+pub fn load_matrix(file: &[Rstr]) -> Result<Robj> {
     init();
+    let file = file
+        .iter()
+        .map(|f| -> Result<RMatrix<f64>> {
+            Ok(File::from_str(f.as_str())?.read_matrix(true)?.to_rmatrix())
+        })
+        .collect::<Result<Vec<_>>>()?;
 
-    Ok(File::from_str(file)?.read_matrix(true)?.to_rmatrix())
+    if file.len() == 1 {
+        Ok(file.into_iter().next().unwrap().into_robj())
+    } else {
+        Ok(List::from_values(file).into_robj())
+    }
 }
 
 /// Compute the p value of a linear regression between each pair of columns in two matrices.
