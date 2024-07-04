@@ -36,7 +36,7 @@ calculate_r2 <- function(data, outcomes) .Call(wrap__calculate_r2, data, outcome
 #' @export
 calculate_r2_ranges <- function(data, outcomes, ranges) .Call(wrap__calculate_r2_ranges, data, outcomes, ranges)
 
-#' Combine matrices into a single matrix.
+#' Combine matrices into a single matrix by columns.
 #' `data` is a character vector of file names or a list of matrices.
 #' `out` is a file name to write the combined matrix to.
 #' If `out` is `NULL`, the combined matrix is returned otherwise `NULL`.
@@ -160,6 +160,13 @@ df_sort_asc <- function(df, columns) .Call(wrap__df_sort_asc, df, columns)
 #' `out` is a file name to write the matrix to or `NULL` to return the matrix.
 #' @export
 combine_vectors <- function(data, out) .Call(wrap__combine_vectors, data, out)
+
+#' Extend matrices into a single matrix by rows.
+#' `data` is a character vector of file names or a list of matrices.
+#' `out` is a file name to write the combined matrix to.
+#' If `out` is `NULL`, the combined matrix is returned otherwise `NULL`.
+#' @export
+extend_matrices <- function(data, out) .Call(wrap__extend_matrices, data, out)
 
 #' Set the log level.
 #' `level` is the log level.

@@ -414,7 +414,7 @@ pub fn calculate_r2_ranges(data: Robj, outcomes: Robj, ranges: RMatrix<u32>) -> 
 const COMBINE_MATRICES_DATA_MUST_BE: &str =
     "data must be a character vector of file names or a list of matrices";
 
-/// Combine matrices into a single matrix.
+/// Combine matrices into a single matrix by columns.
 /// `data` is a character vector of file names or a list of matrices.
 /// `out` is a file name to write the combined matrix to.
 /// If `out` is `NULL`, the combined matrix is returned otherwise `NULL`.
@@ -427,33 +427,14 @@ pub fn combine_matrices(data: Robj, out: Nullable<&str>) -> Result<Nullable<Robj
         Null => None,
         NotNull(out) => Some(lmutils::File::from_str(out)?),
     };
-    let data: Result<Vec<lmutils::Matrix>> = if data.is_list() {
-        let data = data.as_list().expect("data is a list");
-        if data.len() == 0 {
-            return Err(COMBINE_MATRICES_DATA_MUST_BE.into());
-        }
-        data.into_iter()
-            .map(|(_, i)| {
-                if i.is_matrix() {
-                    Ok(RMatrix::<f64>::try_from(i).expect("i is a matrix").into())
-                } else if i.is_string() {
-                    Ok(lmutils::File::from_str(i.as_str().expect("i is a string"))?.into())
-                } else {
-                    Err(COMBINE_MATRICES_DATA_MUST_BE.into())
-                }
-            })
-            .collect()
-    } else {
-        Err(COMBINE_MATRICES_DATA_MUST_BE.into())
-    };
-    let data = data?;
+    let data = file_or_matrix_list(data)?;
     let res = if data.len() == 1 {
         let mut data = data.into_iter();
-        data.next().expect("data has at least 1 element")
+        data.next().expect("data has at least 1 element").1
     } else {
         let mut data = data.into_iter();
-        let first = data.next().expect("data has at least 1 element");
-        first.combine(data.collect())?
+        let first = data.next().expect("data has at least 1 element").1;
+        first.combine(data.map(|i| i.1).collect())?
     };
     if let Some(out) = out {
         out.write_matrix(&res.to_owned()?)?;
@@ -1032,6 +1013,36 @@ pub fn combine_vectors(data: List, out: Nullable<&str>) -> Result<Nullable<RMatr
     }
 }
 
+/// Extend matrices into a single matrix by rows.
+/// `data` is a character vector of file names or a list of matrices.
+/// `out` is a file name to write the combined matrix to.
+/// If `out` is `NULL`, the combined matrix is returned otherwise `NULL`.
+/// @export
+#[extendr]
+pub fn extend_matrices(data: Robj, out: Nullable<&str>) -> Result<Nullable<Robj>> {
+    init();
+
+    let out = match out {
+        Null => None,
+        NotNull(out) => Some(lmutils::File::from_str(out)?),
+    };
+    let data = file_or_matrix_list(data)?;
+    let res = if data.len() == 1 {
+        let mut data = data.into_iter();
+        data.next().expect("data has at least 1 element").1
+    } else {
+        let mut data = data.into_iter();
+        let first = data.next().expect("data has at least 1 element").1;
+        first.extend(data.map(|i| i.1).collect())?
+    };
+    if let Some(out) = out {
+        out.write_matrix(&res.to_owned()?)?;
+        Ok(Nullable::Null)
+    } else {
+        Ok(Nullable::NotNull(res.into_robj()?))
+    }
+}
+
 /// Set the log level.
 /// `level` is the log level.
 /// @export
@@ -1084,6 +1095,7 @@ extendr_module! {
     fn new_column_from_map_pairs;
     fn df_sort_asc;
     fn combine_vectors;
+    fn extend_matrices;
 
     fn set_log_level;
     fn set_num_main_threads;
