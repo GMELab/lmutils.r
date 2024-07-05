@@ -12,7 +12,6 @@ use std::{
 
 use extendr_api::{io::Load, prelude::*, AsTypedSlice, Deref, DerefMut};
 use lmutils::{File, IntoMatrix, Matrix, OwnedMatrix, ToRMatrix, Transform};
-use log::{debug, error, info};
 use rayon::{
     iter::{
         IndexedParallelIterator, IntoParallelIterator, IntoParallelRefIterator,
@@ -20,6 +19,7 @@ use rayon::{
     },
     slice::{ParallelSlice, ParallelSliceMut},
 };
+use tracing::{debug, error, info};
 
 struct RobjPar(pub Robj);
 
@@ -52,9 +52,14 @@ impl DerefMut for RobjPar {
 unsafe impl Send for RobjPar {}
 
 fn init() {
-    let _ =
-        env_logger::Builder::from_env(env_logger::Env::default().filter_or("LMUTILS_LOG", "info"))
-            .try_init();
+    let _ = tracing_subscriber::fmt()
+        .with_env_filter(
+            tracing_subscriber::EnvFilter::builder()
+                .with_default_directive(tracing::Level::INFO.into())
+                .with_env_var("LMUTILS_LOG")
+                .from_env_lossy(),
+        )
+        .try_init();
 
     let _ = rayon::ThreadPoolBuilder::new()
         .num_threads(
