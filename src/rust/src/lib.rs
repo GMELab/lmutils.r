@@ -992,7 +992,7 @@ pub fn combine_vectors(data: List, out: Nullable<&str>) -> Result<Nullable<RMatr
     let nrows = data
         .iter()
         .map(|(_, v)| {
-            v.as_real_vector()
+            v.as_real_slice()
                 .expect("all vectors must be doubles")
                 .len()
         })
