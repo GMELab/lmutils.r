@@ -175,6 +175,13 @@ extend_matrices <- function(data, out) .Call(wrap__extend_matrices, data, out)
 #' @export
 dedup <- function(data, by, out) .Call(wrap__dedup, data, by, out)
 
+#' Multiply two matrices.
+#' `a` and `b` are string file names or matrices.
+#' `out` is the name of the file to save to.
+#' If `out` is `NULL`, the cross product is returned otherwise `NULL`.
+#' @export
+mul <- function(a, b, out) .Call(wrap__mul, a, b, out)
+
 #' Set the log level.
 #' `level` is the log level.
 #' @export

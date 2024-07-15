@@ -1078,6 +1078,27 @@ pub fn dedup(data: Robj, by: &str, out: Nullable<&str>) -> Result<Nullable<Robj>
     }
 }
 
+/// Multiply two matrices.
+/// `a` and `b` are string file names or matrices.
+/// `out` is the name of the file to save to.
+/// If `out` is `NULL`, the cross product is returned otherwise `NULL`.
+/// @export
+#[extendr]
+pub fn mul(a: Robj, b: Robj, out: Nullable<&str>) -> Result<Nullable<RMatrix<f64>>> {
+    init();
+
+    let a = file_or_matrix(a)?;
+    let b = file_or_matrix(b)?;
+    let mut mat = a.as_mat_ref()? * b.as_mat_ref()?;
+    let mat = Matrix::Ref(mat.as_mut());
+    if let NotNull(out) = out {
+        File::from_str(out)?.write_matrix(&mat.to_owned()?)?;
+        Ok(Nullable::Null)
+    } else {
+        Ok(Nullable::NotNull(mat.to_rmatrix()?))
+    }
+}
+
 /// Set the log level.
 /// `level` is the log level.
 /// @export
@@ -1132,6 +1153,7 @@ extendr_module! {
     fn combine_vectors;
     fn extend_matrices;
     fn dedup;
+    fn mul;
 
     fn set_log_level;
     fn set_num_main_threads;
