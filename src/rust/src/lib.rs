@@ -139,10 +139,11 @@ fn file_or_matrix_list(data: Robj) -> Result<Vec<(String, lmutils::Matrix<'stati
                     .into_matrix(),
             )]);
         }
-        data.into_iter()
-            .enumerate()
-            .map(|(i, (x, r))| {
-                if r.is_matrix() {
+        let mut i = 1;
+        let r: Result<Vec<Vec<(String, Matrix<'static>)>>> = data
+            .into_iter()
+            .map(|(x, r)| {
+                let r = if r.is_matrix() {
                     Ok((
                         if x.is_empty() || x == "NA" {
                             (i + 1).to_string()
@@ -187,21 +188,36 @@ fn file_or_matrix_list(data: Robj) -> Result<Vec<(String, lmutils::Matrix<'stati
                         .map(|x| x.into_iter().any(|c| c == "data.frame"))
                         .unwrap_or(false)
                     {
-                        return Ok((
+                        Ok((
                             (i + 1).to_string(),
                             R!("as.matrix(sapply({{r}}, as.double))")?
                                 .as_matrix::<f64>()
                                 .unwrap()
                                 .into_matrix(),
-                        ));
+                        ))
                     } else {
-                        Err(CALCULATE_R2_DATA_MUST_BE.into())
+                        let r = file_or_matrix_list(r)?
+                            .into_iter()
+                            .enumerate()
+                            .map(|(j, (x, r))| {
+                                if let Ok(x) = x.parse::<usize>() {
+                                    ((i + j).to_string(), r)
+                                } else {
+                                    (x, r)
+                                }
+                            })
+                            .collect::<Vec<_>>();
+                        i += r.len();
+                        return Ok(r);
                     }
                 } else {
-                    Err(CALCULATE_R2_DATA_MUST_BE.into())
-                }
+                    return Err(CALCULATE_R2_DATA_MUST_BE.into());
+                };
+                i += 1;
+                Ok(vec![r?])
             })
-            .collect()
+            .collect();
+        Ok(r?.into_iter().flatten().collect())
     } else if data.is_string() {
         let data = data.as_str_vector().expect("data is a string vector");
         data.into_iter()
@@ -606,17 +622,26 @@ pub fn to_matrix_dir(from: &str, to: Nullable<&str>, file_type: &str) -> Result<
 
 /// Standardize a matrix. All NaN values are replaced with the mean of the column and each column is scaled to have a mean of 0 and a standard deviation of 1.
 /// `data` is a string file name or a matrix.
-/// `out` is a file name to write the normalized matrix to, `TRUE` to return the normalized matrix
-/// instead of mutating, or `NULL` to mutate the matrix passed in if it's an R matrix.
+/// `out` is a file name to write the normalized matrix to or `NULL` to return the normalized
+/// matrix.
 /// @export
 #[extendr]
-pub fn standardize(data: Robj, out: Nullable<Robj>) -> Result<Robj> {
+pub fn standardize(data: Robj, out: Nullable<&str>) -> Result<Robj> {
     init();
 
     let data = file_or_matrix(data)?;
-    maybe_mutating_return(data, out, |data| {
-        Ok(data.nan_to_mean().standardization().transform()?)
-    })
+    let data = data
+        .to_owned()?
+        .into_matrix()
+        .nan_to_mean()
+        .standardization()
+        .transform()?;
+    if let NotNull(out) = out {
+        File::from_str(out)?.write_matrix(&data.to_owned()?)?;
+        Ok(().into())
+    } else {
+        Ok(data.into_robj()?)
+    }
 }
 
 /// Load a matrix from a file.
