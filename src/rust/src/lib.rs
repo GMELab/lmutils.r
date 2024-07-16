@@ -143,7 +143,7 @@ fn file_or_matrix_list(data: Robj) -> Result<Vec<(String, lmutils::Matrix<'stati
         let r: Result<Vec<Vec<(String, Matrix<'static>)>>> = data
             .into_iter()
             .map(|(x, r)| {
-                let r = if r.is_matrix() {
+                let r: Result<(String, Matrix<'static>)> = if r.is_matrix() {
                     Ok((
                         if x.is_empty() || x == "NA" {
                             (i + 1).to_string()
@@ -200,7 +200,7 @@ fn file_or_matrix_list(data: Robj) -> Result<Vec<(String, lmutils::Matrix<'stati
                             .into_iter()
                             .enumerate()
                             .map(|(j, (x, r))| {
-                                if let Ok(x) = x.parse::<usize>() {
+                                if x.parse::<usize>().is_ok() {
                                     ((i + j).to_string(), r)
                                 } else {
                                     (x, r)
@@ -253,6 +253,7 @@ fn file_or_matrix_list(data: Robj) -> Result<Vec<(String, lmutils::Matrix<'stati
     }
 }
 
+#[allow(dead_code)]
 fn maybe_mutating_return(
     mut data: Matrix<'static>,
     out: Nullable<Robj>,
