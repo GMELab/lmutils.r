@@ -2,14 +2,14 @@
 % Please edit documentation in R/extendr-wrappers.R
 \name{set_num_worker_threads}
 \alias{set_num_worker_threads}
-\title{Set the number of worker threads to use.
+\title{Set the number of worker threads to use. By default this value is \code{num_cpus::get() / 2}.
 This is the number of threads to use for parallel operations.
 \code{num} is the number of worker threads.}
 \usage{
 set_num_worker_threads(num)
 }
 \description{
-Set the number of worker threads to use.
+Set the number of worker threads to use. By default this value is \code{num_cpus::get() / 2}.
 This is the number of threads to use for parallel operations.
 \code{num} is the number of worker threads.
 }

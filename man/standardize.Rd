@@ -4,14 +4,14 @@
 \alias{standardize}
 \title{Standardize a matrix. All NaN values are replaced with the mean of the column and each column is scaled to have a mean of 0 and a standard deviation of 1.
 \code{data} is a string file name or a matrix.
-\code{out} is a file name to write the normalized matrix to, \code{TRUE} to return the normalized matrix
-instead of mutating, or \code{NULL} to mutate the matrix passed in if it's an R matrix.}
+\code{out} is a file name to write the normalized matrix to or \code{NULL} to return the normalized
+matrix.}
 \usage{
 standardize(data, out)
 }
 \description{
 Standardize a matrix. All NaN values are replaced with the mean of the column and each column is scaled to have a mean of 0 and a standard deviation of 1.
 \code{data} is a string file name or a matrix.
-\code{out} is a file name to write the normalized matrix to, \code{TRUE} to return the normalized matrix
-instead of mutating, or \code{NULL} to mutate the matrix passed in if it's an R matrix.
+\code{out} is a file name to write the normalized matrix to or \code{NULL} to return the normalized
+matrix.
 }

@@ -3,17 +3,17 @@
 \name{match_rows}
 \alias{match_rows}
 \title{Match the rows of a matrix to the values in a vector by a column.
-\code{data} is a string file name or a matrix.
+\code{data} is a list of matrix convertable objects.
 \code{with} is a numeric vector.
 \code{by} is the column to match by.
-\code{out} is a file name to write the matched matrix to or \code{NULL} to return the matched matrix.}
+\code{out} is a standard non-mutating output.}
 \usage{
 match_rows(data, with, by, out)
 }
 \description{
 Match the rows of a matrix to the values in a vector by a column.
-\code{data} is a string file name or a matrix.
+\code{data} is a list of matrix convertable objects.
 \code{with} is a numeric vector.
 \code{by} is the column to match by.
-\code{out} is a file name to write the matched matrix to or \code{NULL} to return the matched matrix.
+\code{out} is a standard non-mutating output.
 }

@@ -2,12 +2,16 @@
 % Please edit documentation in R/extendr-wrappers.R
 \name{convert_file}
 \alias{convert_file}
-\title{Convert files from one format to another.
-\code{from} and \code{to} must be character vectors of the same length.}
+\title{DEPRECATED
+Convert files from one format to another.
+\code{from} is a list of matrix convertable objects.
+\code{to} is a list of file names to write to.}
 \usage{
 convert_file(from, to)
 }
 \description{
+DEPRECATED
 Convert files from one format to another.
-\code{from} and \code{to} must be character vectors of the same length.
+\code{from} is a list of matrix convertable objects.
+\code{to} is a list of file names to write to.
 }

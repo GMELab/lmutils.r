@@ -11,98 +11,70 @@
 #' @useDynLib lmutils, .registration = TRUE
 NULL
 
-#' Convert files from one format to another.
-#' `from` and `to` must be character vectors of the same length.
+#' Saves a list of matrix convertible objects to a character vector of file names.
+#' `from` is a list of matrix convertable objects.
+#' `to` is a character vector of file names to write to.
 #' @export
-convert_file <- function(from, to) .Call(wrap__convert_file, from, to)
+save <- function(from, to) .Call(wrap__save, from, to)
 
-#' Convert files from one format to another.
-#' `from` and `to` must be character vectors of the same length.
+#' Recursively converts a directory of files to the selected format.
+#' `from` is the directory to read from.
+#' `to` is the directory to write to or `NULL` to write to `from`.
+#' `file_type` is the file extension to write as.
 #' @export
-convert_files <- function(from, to, item_type) .Call(wrap__convert_files, from, to, item_type)
+save_dir <- function(from, to, file_type) .Call(wrap__save_dir, from, to, file_type)
 
 #' Calculate R^2 and adjusted R^2 for a block and outcomes.
-#' `data` is a character vector of file names, a list of matrices, or a single matrix.
-#' `outcomes` is a file name or a matrix.
-#' Returns a data frame with columns `r2`, `adj_r2`, `data`, and `outcome`.
+#' `data` is a list of matrix convertable objects.
+#' `outcomes` is a matrix convertable object.
+#' Returns a data frame with columns `r2`, `adj_r2`, `data`, `outcome`, `n`, `m`, and `predicted`.
 #' @export
 calculate_r2 <- function(data, outcomes) .Call(wrap__calculate_r2, data, outcomes)
 
-#' Calculate R^2 and adjusted R^2 for ranges of a data matrix and outcomes.
-#' `data` is a string file name or a matrix.
-#' `outcomes` is a string file name or a matrix.
-#' `ranges` is a matrix with 2 columns, the start and end columns to use (inclusive).
-#' Returns a data frame with columns `r2`, `adj_r2`, and `outcome` corresponding to each range.
-#' @export
-calculate_r2_ranges <- function(data, outcomes, ranges) .Call(wrap__calculate_r2_ranges, data, outcomes, ranges)
-
-#' Combine matrices into a single matrix by columns.
-#' `data` is a character vector of file names or a list of matrices.
-#' `out` is a file name to write the combined matrix to.
-#' If `out` is `NULL`, the combined matrix is returned otherwise `NULL`.
-#' @export
-combine_matrices <- function(data, out) .Call(wrap__combine_matrices, data, out)
-
-#' Remove rows from a matrix.
-#' `data` is a character vector of file names, a list of matrices, or a single matrix.
-#' `rows` is a vector of row indices to remove (1-based).
-#' `out` is a file name to write the matrix with the rows removed to.
-#' If `out` is `NULL`, the matrix with the rows removed is returned otherwise `NULL`.
-#' @export
-remove_rows <- function(data, rows, out) .Call(wrap__remove_rows, data, rows, out)
-
-#' Save a matrix to a file.
-#' `mat` must be a double matrix.
-#' `out` is the name of the file to save to.
-#' @export
-save_matrix <- function(mat, out) .Call(wrap__save_matrix, mat, out)
-
-#' Convert a data frame to a file.
-#' `df` must be a numeric data frame, numeric matrix, or a string RData file name.
-#' `out` is the name of the file to save to.
-#' If `out` is `NULL`, the matrix is returned otherwise `NULL`.
-#' @export
-to_matrix <- function(df, out) .Call(wrap__to_matrix, df, out)
-
-#' Computes the cross product of the matrix. Equivalent to `t(data) %*% data`.
-#' `data` must be a string file name or a matrix.
-#' `out` is the name of the file to save to.
-#' If `out` is `NULL`, the cross product is returned otherwise `NULL`.
-#' @export
-crossprod <- function(data, out) .Call(wrap__crossprod, data, out)
-
-#' Recursively converts a directory of RData files to matrices.
-#' `from` is the directory to read from.
-#' `to` is the directory to write to.
-#' `file_type` is the file extension to write as.
-#' If `to` is `NULL`, the files are written to `from`.
-#' @export
-to_matrix_dir <- function(from, to, file_type) .Call(wrap__to_matrix_dir, from, to, file_type)
-
-#' Standardize a matrix. All NaN values are replaced with the mean of the column and each column is scaled to have a mean of 0 and a standard deviation of 1.
-#' `data` is a string file name or a matrix.
-#' `out` is a file name to write the normalized matrix to, `TRUE` to return the normalized matrix
-#' instead of mutating, or `NULL` to mutate the matrix passed in if it's an R matrix.
-#' @export
-standardize <- function(data, out) .Call(wrap__standardize, data, out)
-
-#' Load a matrix from a file.
-#' `file` is the name of the file to load from.
-#' @export
-load_matrix <- function(file) .Call(wrap__load_matrix, file)
-
 #' Compute the p value of a linear regression between each pair of columns in two matrices.
-#' `data` is a character vector of file names, a list of matrices, or a single matrix.
-#' `outcomes` is a file name or a matrix.
+#' `data` is a list of matrix convertable objects.
+#' `outcomes` is a matrix convertable object.
 #' Returns a data frame with columns `p`, `data`, `data_column`, and `outcome`.
 #' @export
 column_p_values <- function(data, outcomes) .Call(wrap__column_p_values, data, outcomes)
 
+#' Combine a list of double vectors into a matrix.
+#' `data` is a list of double vectors.
+#' `out` is an output file name or `NULL` to return the matrix.
+#' @export
+combine_vectors <- function(data, out) .Call(wrap__combine_vectors, data, out)
+
+#' Remove rows from a matrix.
+#' `data` is a list of matrix convertable objects.
+#' `rows` is a vector of row indices to remove (1-based).
+#' `out` is a standard non-mutating output.
+#' @export
+remove_rows <- function(data, rows, out) .Call(wrap__remove_rows, data, rows, out)
+
+#' Computes the cross product of the matrix. Equivalent to `t(data) %*% data`.
+#' `data` is a list of matrix convertable objects.
+#' `out` is a standard non-mutating output.
+#' @export
+crossprod <- function(data, out) .Call(wrap__crossprod, data, out)
+
+#' Multiply two matrices. Equivalent to `a %*% b`.
+#' `a` is a list of matrix convertable objects.
+#' `b` is a list of matrix convertable objects.
+#' `out` is a standard non-mutating output.
+#' @export
+mul <- function(a, b, out) .Call(wrap__mul, a, b, out)
+
+#' Load a matrix convertable object into R.
+#' `obj` is a list of matrix convertable objects.
+#' If a single object is provided, the function will return the matrix directly, otherwise it will return a list of matrices.
+#' @export
+load <- function(obj) .Call(wrap__load, obj)
+
 #' Match the rows of a matrix to the values in a vector by a column.
-#' `data` is a string file name or a matrix.
+#' `data` is a list of matrix convertable objects.
 #' `with` is a numeric vector.
 #' `by` is the column to match by.
-#' `out` is a file name to write the matched matrix to or `NULL` to return the matched matrix.
+#' `out` is a standard non-mutating output.
 #' @export
 match_rows <- function(data, with, by, out) .Call(wrap__match_rows, data, with, by, out)
 
@@ -114,53 +86,112 @@ match_rows <- function(data, with, by, out) .Call(wrap__match_rows, data, with, 
 #' @export
 match_rows_dir <- function(from, to, with, by) .Call(wrap__match_rows_dir, from, to, with, by)
 
+#' Deduplicate a matrix by a column. The first occurrence of each value is kept.
+#' `data` is a list of matrix convertable objects.
+#' `by` is the column to deduplicate by.
+#' `out` is a standard non-mutating output.
+#' @export
+dedup <- function(data, by, out) .Call(wrap__dedup, data, by, out)
+
 #' Compute a new column for a data frame from a regex and an existing column.
 #' `df` is a data frame.
 #' `column` is the column to match.
-#' `regex` is the regex to match, the first capture group is used.
-#' `new_column` is the new column to create.
+#' `regex` is the regex to match. The first capture group is used.
+#' `new_column` is the new column name.
 #' This function uses the Rust flavor of regex, see https://docs.rs/regex/latest/regex/#syntax for more /* information */.
 #' @export
 new_column_from_regex <- function(df, column, regex, new_column) .Call(wrap__new_column_from_regex, df, column, regex, new_column)
 
-#' Converts two character vectors to a list with the first vector as the names and the second as the values,
-#' only keeping the first occurrence of each name. Essentially creates a hash map.
+#' Converts two character vectors into a named list, where the first vector is the names and the second vector is the values. Only the first occurrence of each name is used, essentially creating a map.
 #' `names` is a character vector of names.
-#' `values` is a list of values.
+#' `values` is a character vector of values.
 #' @export
 map_from_pairs <- function(names, values) .Call(wrap__map_from_pairs, names, values)
 
-#' Add a new column to a data frame from a list of values, matching by the names of the values.
-#' `df` is a data frame.
+#' Compute a new column for a data frame from a list of values and an existing column, matching by the names of the values.
 #' `column` is the column to match.
-#' `values` is a list of values (a map like from `lmutils::map_from_pairs`)
-#' `new_column` is the new column to create.
+#' `values` is a named list of values.
+#' `new_column` is the new column name.
 #' @export
 new_column_from_map <- function(df, column, values, new_column) .Call(wrap__new_column_from_map, df, column, values, new_column)
 
-#' Add a new column to a data frame from two character vectors of names and values, matching by
-#' the names.
+#' Compute a new column for a data frame from two character vectors of names and values, matching by the names.
 #' `df` is a data frame.
 #' `column` is the column to match.
 #' `names` is a character vector of names.
 #' `values` is a character vector of values.
-#' `new_column` is the new column to create.
+#' `new_column` is the new column name.
 #' @export
 new_column_from_map_pairs <- function(df, column, names, values, new_column) .Call(wrap__new_column_from_map_pairs, df, column, names, values, new_column)
 
-#' Mutably sorts a data frame by multiple columns in ascending order. All columns must be
-#' be numeric (double or integer), character, or logical vectors.
+#' Mutably sorts a data frame in ascending order by multiple columns in ascending order. All columns must be numeric (double or integer), character, or logical vectors.
 #' `df` is a data frame.
 #' `columns` is a character vector of columns to sort by.
 #' @export
 df_sort_asc <- function(df, columns) .Call(wrap__df_sort_asc, df, columns)
 
-#' Combine a list of double vectors into a matrix.
-#' `data` is a list of double vectors.
-#' `out` is a file name to write the matrix to or `NULL` to return the matrix.
+#' Set the log level.
+#' `level` is the log level.
 #' @export
-combine_vectors <- function(data, out) .Call(wrap__combine_vectors, data, out)
+set_log_level <- function(level) invisible(.Call(wrap__set_log_level, level))
 
+#' Sets the core parallelism for lmutils.
+#' This is the number of primary operations to perform at once.
+#' `num` is the number of main threads.
+#' @export
+set_core_parallelism <- function(num) invisible(.Call(wrap__set_core_parallelism, num))
+
+#' Set the number of worker threads to use. By default this value is `num_cpus::get() / 2`.
+#' This is the number of threads to use for parallel operations.
+#' `num` is the number of worker threads.
+#' @export
+set_num_worker_threads <- function(num) invisible(.Call(wrap__set_num_worker_threads, num))
+
+#' @export
+internal_lmutils_fd_into_file <- function(file, fd) invisible(.Call(wrap__internal_lmutils_fd_into_file, file, fd))
+
+#' @export
+internal_lmutils_file_into_fd <- function(file, fd) invisible(.Call(wrap__internal_lmutils_file_into_fd, file, fd))
+
+#' DEPRECATED
+#' Convert files from one format to another.
+#' `from` is a list of matrix convertable objects.
+#' `to` is a list of file names to write to.
+#' @export
+convert_file <- function(from, to) .Call(wrap__convert_file, from, to)
+
+#' DEPRECATED
+#' Save a matrix to a file.
+#' `mat` must be a double matrix.
+#' `out` is the name of the file to save to.
+#' @export
+save_matrix <- function(mat, out) .Call(wrap__save_matrix, mat, out)
+
+#' Standardize a matrix. All NaN values are replaced with the mean of the column and each column is scaled to have a mean of 0 and a standard deviation of 1.
+#' `data` is a string file name or a matrix.
+#' `out` is a file name to write the normalized matrix to or `NULL` to return the normalized
+#' matrix.
+#' @export
+standardize <- function(data, out) .Call(wrap__standardize, data, out)
+
+#' DEPRECATED
+#' Convert a data frame to a file.
+#' `df` must be a numeric data frame, numeric matrix, or a string RData file name.
+#' `out` is the name of the file to save to.
+#' If `out` is `NULL`, the matrix is returned otherwise `NULL`.
+#' @export
+to_matrix <- function(df, out) .Call(wrap__to_matrix, df, out)
+
+#' DEPRECATED
+#' Recursively converts a directory of files to the selected format.
+#' `from` is the directory to read from.
+#' `to` is the directory to write to.
+#' `file_type` is the file extension to write as.
+#' If `to` is `NULL`, the files are written to `from`.
+#' @export
+to_matrix_dir <- function(from, to, file_type) .Call(wrap__to_matrix_dir, from, to, file_type)
+
+#' DEPRECATED
 #' Extend matrices into a single matrix by rows.
 #' `data` is a character vector of file names or a list of matrices.
 #' `out` is a file name to write the combined matrix to.
@@ -168,36 +199,26 @@ combine_vectors <- function(data, out) .Call(wrap__combine_vectors, data, out)
 #' @export
 extend_matrices <- function(data, out) .Call(wrap__extend_matrices, data, out)
 
-#' Deduplicate a matrix by a column. The first occurrence of each value is kept.
-#' `data` is a string file name or a matrix.
-#' `by` is the column to deduplicate by.
-#' `out` is a file name to write the deduplicated matrix to or `NULL` to return the deduplicated matrix.
-#' @export
-dedup <- function(data, by, out) .Call(wrap__dedup, data, by, out)
-
-#' Multiply two matrices.
-#' `a` and `b` are string file names or matrices.
-#' `out` is the name of the file to save to.
-#' If `out` is `NULL`, the cross product is returned otherwise `NULL`.
-#' @export
-mul <- function(a, b, out) .Call(wrap__mul, a, b, out)
-
-#' Set the log level.
-#' `level` is the log level.
-#' @export
-set_log_level <- function(level) invisible(.Call(wrap__set_log_level, level))
-
+#' DEPRECATED
 #' Set the number of main threads to use.
 #' This is the number of primary operations to perform at once.
 #' `num` is the number of main threads.
 #' @export
 set_num_main_threads <- function(num) invisible(.Call(wrap__set_num_main_threads, num))
 
-#' Set the number of worker threads to use.
-#' This is the number of threads to use for parallel operations.
-#' `num` is the number of worker threads.
+#' DEPRECATED
+#' Combine matrices into a single matrix by columns.
+#' `data` is a character vector of file names or a list of matrices.
+#' `out` is a file name to write the combined matrix to.
+#' If `out` is `NULL`, the combined matrix is returned otherwise `NULL`.
 #' @export
-set_num_worker_threads <- function(num) invisible(.Call(wrap__set_num_worker_threads, num))
+combine_matrices <- function(data, out) .Call(wrap__combine_matrices, data, out)
+
+#' DEPRECATED
+#' Load a matrix from a file.
+#' `file` is the name of the file to load from.
+#' @export
+load_matrix <- function(file) .Call(wrap__load_matrix, file)
 
 
 # nolint end

@@ -2,16 +2,16 @@
 % Please edit documentation in R/extendr-wrappers.R
 \name{mul}
 \alias{mul}
-\title{Multiply two matrices.
-\code{a} and \code{b} are string file names or matrices.
-\code{out} is the name of the file to save to.
-If \code{out} is \code{NULL}, the cross product is returned otherwise \code{NULL}.}
+\title{Multiply two matrices. Equivalent to \code{a \%*\% b}.
+\code{a} is a list of matrix convertable objects.
+\code{b} is a list of matrix convertable objects.
+\code{out} is a standard non-mutating output.}
 \usage{
 mul(a, b, out)
 }
 \description{
-Multiply two matrices.
-\code{a} and \code{b} are string file names or matrices.
-\code{out} is the name of the file to save to.
-If \code{out} is \code{NULL}, the cross product is returned otherwise \code{NULL}.
+Multiply two matrices. Equivalent to \code{a \%*\% b}.
+\code{a} is a list of matrix convertable objects.
+\code{b} is a list of matrix convertable objects.
+\code{out} is a standard non-mutating output.
 }

@@ -2,16 +2,14 @@
 % Please edit documentation in R/extendr-wrappers.R
 \name{map_from_pairs}
 \alias{map_from_pairs}
-\title{Converts two character vectors to a list with the first vector as the names and the second as the values,
-only keeping the first occurrence of each name. Essentially creates a hash map.
+\title{Converts two character vectors into a named list, where the first vector is the names and the second vector is the values. Only the first occurrence of each name is used, essentially creating a map.
 \code{names} is a character vector of names.
-\code{values} is a list of values.}
+\code{values} is a character vector of values.}
 \usage{
 map_from_pairs(names, values)
 }
 \description{
-Converts two character vectors to a list with the first vector as the names and the second as the values,
-only keeping the first occurrence of each name. Essentially creates a hash map.
+Converts two character vectors into a named list, where the first vector is the names and the second vector is the values. Only the first occurrence of each name is used, essentially creating a map.
 \code{names} is a character vector of names.
-\code{values} is a list of values.
+\code{values} is a character vector of values.
 }

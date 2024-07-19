@@ -2,16 +2,14 @@
 % Please edit documentation in R/extendr-wrappers.R
 \name{df_sort_asc}
 \alias{df_sort_asc}
-\title{Mutably sorts a data frame by multiple columns in ascending order. All columns must be
-be numeric (double or integer), character, or logical vectors.
+\title{Mutably sorts a data frame in ascending order by multiple columns in ascending order. All columns must be numeric (double or integer), character, or logical vectors.
 \code{df} is a data frame.
 \code{columns} is a character vector of columns to sort by.}
 \usage{
 df_sort_asc(df, columns)
 }
 \description{
-Mutably sorts a data frame by multiple columns in ascending order. All columns must be
-be numeric (double or integer), character, or logical vectors.
+Mutably sorts a data frame in ascending order by multiple columns in ascending order. All columns must be numeric (double or integer), character, or logical vectors.
 \code{df} is a data frame.
 \code{columns} is a character vector of columns to sort by.
 }
