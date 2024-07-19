@@ -5,7 +5,7 @@
 \title{Multiply two matrices. Equivalent to \code{a \%*\% b}.
 \code{a} is a list of matrix convertable objects.
 \code{b} is a list of matrix convertable objects.
-\code{out} is a standard non-mutating output.}
+\code{out} is a standard output file.}
 \usage{
 mul(a, b, out)
 }
@@ -13,5 +13,5 @@ mul(a, b, out)
 Multiply two matrices. Equivalent to \code{a \%*\% b}.
 \code{a} is a list of matrix convertable objects.
 \code{b} is a list of matrix convertable objects.
-\code{out} is a standard non-mutating output.
+\code{out} is a standard output file.
 }

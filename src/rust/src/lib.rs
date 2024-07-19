@@ -13,7 +13,7 @@ use std::{
 
 pub use crate::utils::{
     from_to_file, get_core_parallelism, init, list_files, matrix, maybe_mutating_return,
-    maybe_return_vec, named_matrix_list, parallelize, Par,
+    maybe_return_vec, named_matrix_list, parallelize, Mat, Par,
 };
 use extendr_api::{prelude::*, AsTypedSlice};
 use lmutils::{File, IntoMatrix, Join, Matrix, OwnedMatrix};
@@ -24,8 +24,10 @@ use utils::{matrix_list, maybe_return_paired};
 // MATRIX OBJECT
 type Ptr = ExternalPtr<utils::Mat>;
 
+/// `lmutils::Mat` objects are a way to store matrices in memory and perform operations on them. They can be used to store operations or chain operations together for later execution. This can be useful if, for example, you wish to a hundred large matrices from files and standardize them all before using `lmutils::calculate_r2`. Using `Mat` objects, you can store the operations you wish to perform and `Mat` will execute them only when the matrix is loaded.
+/// @export
 #[extendr]
-impl utils::Mat {
+impl Mat {
     /// Create a new matrix object from a matrix convertable object.
     /// `data` is a matrix convertable object.
     /// @export
@@ -974,7 +976,6 @@ pub fn internal_lmutils_file_into_fd(file: &str, fd: i32) {
 /// `from` is a list of matrix convertable objects.
 /// `to` is a list of file names to write to.
 /// @export
-/// @deprecated
 #[extendr]
 #[deprecated]
 pub fn convert_file(from: Robj, to: &[Rstr]) -> Result<()> {
@@ -988,7 +989,6 @@ pub fn convert_file(from: Robj, to: &[Rstr]) -> Result<()> {
 /// `mat` must be a double matrix.
 /// `out` is the name of the file to save to.
 /// @export
-/// @deprecated
 #[extendr]
 #[deprecated]
 pub fn save_matrix(mat: Robj, out: &[Rstr]) -> Result<()> {
@@ -1003,7 +1003,6 @@ pub fn save_matrix(mat: Robj, out: &[Rstr]) -> Result<()> {
 /// `out` is the name of the file to save to.
 /// If `out` is `NULL`, the matrix is returned otherwise `NULL`.
 /// @export
-/// @deprecated
 #[extendr]
 #[deprecated]
 pub fn to_matrix(df: Robj, out: Nullable<Robj>) -> Result<Robj> {
@@ -1015,7 +1014,6 @@ pub fn to_matrix(df: Robj, out: Nullable<Robj>) -> Result<Robj> {
 /// `out` is a file name to write the normalized matrix to or `NULL` to return the normalized
 /// matrix.
 /// @export
-/// @deprecated
 #[extendr]
 #[deprecated]
 pub fn standardize(data: Robj, out: Robj) -> Result<Robj> {
@@ -1032,7 +1030,6 @@ pub fn standardize(data: Robj, out: Robj) -> Result<Robj> {
 /// `file_type` is the file extension to write as.
 /// If `to` is `NULL`, the files are written to `from`.
 /// @export
-/// @deprecated
 #[extendr]
 #[deprecated]
 pub fn to_matrix_dir(from: &str, to: Nullable<&str>, file_type: &str) -> Result<()> {
@@ -1045,7 +1042,6 @@ pub fn to_matrix_dir(from: &str, to: Nullable<&str>, file_type: &str) -> Result<
 /// `out` is a file name to write the combined matrix to.
 /// If `out` is `NULL`, the combined matrix is returned otherwise `NULL`.
 /// @export
-/// @deprecated
 #[extendr]
 #[deprecated]
 pub fn extend_matrices(data: Robj, out: Nullable<Robj>) -> Result<Nullable<Robj>> {
@@ -1060,7 +1056,6 @@ pub fn extend_matrices(data: Robj, out: Nullable<Robj>) -> Result<Nullable<Robj>
 /// This is the number of primary operations to perform at once.
 /// `num` is the number of main threads.
 /// @export
-/// @deprecated
 #[extendr]
 #[deprecated]
 pub fn set_num_main_threads(num: u32) {
@@ -1073,7 +1068,6 @@ pub fn set_num_main_threads(num: u32) {
 /// `out` is a file name to write the combined matrix to.
 /// If `out` is `NULL`, the combined matrix is returned otherwise `NULL`.
 /// @export
-/// @deprecated
 #[extendr]
 #[deprecated]
 pub fn combine_matrices(data: Robj, out: Nullable<Robj>) -> Result<Nullable<Robj>> {
@@ -1087,7 +1081,6 @@ pub fn combine_matrices(data: Robj, out: Nullable<Robj>) -> Result<Nullable<Robj
 /// Load a matrix from a file.
 /// `file` is the name of the file to load from.
 /// @export
-/// @deprecated
 #[extendr]
 pub fn load_matrix(file: Robj) -> Result<Robj> {
     maybe_return_paired(file, ().into(), Ok)
@@ -1100,6 +1093,9 @@ pub fn load_matrix(file: Robj) -> Result<Robj> {
 // See corresponding C code in `entrypoint.c`.
 extendr_module! {
     mod lmutils;
+
+    impl Mat;
+
     fn save;
     fn save_dir;
     fn calculate_r2;

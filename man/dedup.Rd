@@ -5,7 +5,7 @@
 \title{Deduplicate a matrix by a column. The first occurrence of each value is kept.
 \code{data} is a list of matrix convertable objects.
 \code{by} is the column to deduplicate by.
-\code{out} is a standard non-mutating output.}
+\code{out} is a standard output file.}
 \usage{
 dedup(data, by, out)
 }
@@ -13,5 +13,5 @@ dedup(data, by, out)
 Deduplicate a matrix by a column. The first occurrence of each value is kept.
 \code{data} is a list of matrix convertable objects.
 \code{by} is the column to deduplicate by.
-\code{out} is a standard non-mutating output.
+\code{out} is a standard output file.
 }

@@ -5,7 +5,7 @@
 \title{Remove rows from a matrix.
 \code{data} is a list of matrix convertable objects.
 \code{rows} is a vector of row indices to remove (1-based).
-\code{out} is a standard non-mutating output.}
+\code{out} is a standard output file.}
 \usage{
 remove_rows(data, rows, out)
 }
@@ -13,5 +13,5 @@ remove_rows(data, rows, out)
 Remove rows from a matrix.
 \code{data} is a list of matrix convertable objects.
 \code{rows} is a vector of row indices to remove (1-based).
-\code{out} is a standard non-mutating output.
+\code{out} is a standard output file.
 }

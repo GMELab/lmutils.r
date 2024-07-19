@@ -47,20 +47,20 @@ combine_vectors <- function(data, out) .Call(wrap__combine_vectors, data, out)
 #' Remove rows from a matrix.
 #' `data` is a list of matrix convertable objects.
 #' `rows` is a vector of row indices to remove (1-based).
-#' `out` is a standard non-mutating output.
+#' `out` is a standard output file.
 #' @export
 remove_rows <- function(data, rows, out) .Call(wrap__remove_rows, data, rows, out)
 
 #' Computes the cross product of the matrix. Equivalent to `t(data) %*% data`.
 #' `data` is a list of matrix convertable objects.
-#' `out` is a standard non-mutating output.
+#' `out` is a standard output file.
 #' @export
 crossprod <- function(data, out) .Call(wrap__crossprod, data, out)
 
 #' Multiply two matrices. Equivalent to `a %*% b`.
 #' `a` is a list of matrix convertable objects.
 #' `b` is a list of matrix convertable objects.
-#' `out` is a standard non-mutating output.
+#' `out` is a standard output file.
 #' @export
 mul <- function(a, b, out) .Call(wrap__mul, a, b, out)
 
@@ -74,7 +74,7 @@ load <- function(obj) .Call(wrap__load, obj)
 #' `data` is a list of matrix convertable objects.
 #' `with` is a numeric vector.
 #' `by` is the column to match by.
-#' `out` is a standard non-mutating output.
+#' `out` is a standard output file.
 #' @export
 match_rows <- function(data, with, by, out) .Call(wrap__match_rows, data, with, by, out)
 
@@ -89,7 +89,7 @@ match_rows_dir <- function(from, to, with, by) .Call(wrap__match_rows_dir, from,
 #' Deduplicate a matrix by a column. The first occurrence of each value is kept.
 #' `data` is a list of matrix convertable objects.
 #' `by` is the column to deduplicate by.
-#' `out` is a standard non-mutating output.
+#' `out` is a standard output file.
 #' @export
 dedup <- function(data, by, out) .Call(wrap__dedup, data, by, out)
 
@@ -219,6 +219,78 @@ combine_matrices <- function(data, out) .Call(wrap__combine_matrices, data, out)
 #' `file` is the name of the file to load from.
 #' @export
 load_matrix <- function(file) .Call(wrap__load_matrix, file)
+
+#' `lmutils::Mat` objects are a way to store matrices in memory and perform operations on them. They can be used to store operations or chain operations together for later execution. This can be useful if, for example, you wish to a hundred large matrices from files and standardize them all before using `lmutils::calculate_r2`. Using `Mat` objects, you can store the operations you wish to perform and `Mat` will execute them only when the matrix is loaded.
+#' @export
+Mat <- new.env(parent = emptyenv())
+
+Mat$new <- function(data) .Call(wrap__Mat__new, data)
+
+Mat$r <- function() .Call(wrap__Mat__r, self)
+
+Mat$save <- function(file) .Call(wrap__Mat__save, self, file)
+
+Mat$combine_columns <- function(data) .Call(wrap__Mat__combine_columns, self, data)
+
+Mat$combine_rows <- function(data) .Call(wrap__Mat__combine_rows, self, data)
+
+Mat$remove_columns <- function(columns) .Call(wrap__Mat__remove_columns, self, columns)
+
+Mat$remove_column <- function(column) .Call(wrap__Mat__remove_column, self, column)
+
+Mat$remove_column_if_exists <- function(column) .Call(wrap__Mat__remove_column_if_exists, self, column)
+
+Mat$remove_rows <- function(rows) .Call(wrap__Mat__remove_rows, self, rows)
+
+Mat$transpose <- function() .Call(wrap__Mat__transpose, self)
+
+Mat$sort <- function(by) .Call(wrap__Mat__sort, self, by)
+
+Mat$sort_by_name <- function(by) .Call(wrap__Mat__sort_by_name, self, by)
+
+Mat$sort_by_order <- function(order) .Call(wrap__Mat__sort_by_order, self, order)
+
+Mat$dedup <- function(by) .Call(wrap__Mat__dedup, self, by)
+
+Mat$dedup_by_name <- function(by) .Call(wrap__Mat__dedup_by_name, self, by)
+
+Mat$match_to <- function(with, by, join) .Call(wrap__Mat__match_to, self, with, by, join)
+
+Mat$match_to_by_name <- function(with, by, join) .Call(wrap__Mat__match_to_by_name, self, with, by, join)
+
+Mat$join <- function(other, self_by, other_by, join) .Call(wrap__Mat__join, self, other, self_by, other_by, join)
+
+Mat$join_by_name <- function(other, by, join) .Call(wrap__Mat__join_by_name, self, other, by, join)
+
+Mat$standardize_columns <- function() .Call(wrap__Mat__standardize_columns, self)
+
+Mat$standardize_rows <- function() .Call(wrap__Mat__standardize_rows, self)
+
+Mat$remove_na_rows <- function() .Call(wrap__Mat__remove_na_rows, self)
+
+Mat$remove_na_columns <- function() .Call(wrap__Mat__remove_na_columns, self)
+
+Mat$na_to_value <- function(value) .Call(wrap__Mat__na_to_value, self, value)
+
+Mat$na_to_column_mean <- function() .Call(wrap__Mat__na_to_column_mean, self)
+
+Mat$na_to_row_mean <- function() .Call(wrap__Mat__na_to_row_mean, self)
+
+Mat$min_column_sum <- function(value) .Call(wrap__Mat__min_column_sum, self, value)
+
+Mat$max_column_sum <- function(value) .Call(wrap__Mat__max_column_sum, self, value)
+
+Mat$min_row_sum <- function(value) .Call(wrap__Mat__min_row_sum, self, value)
+
+Mat$max_row_sum <- function(value) .Call(wrap__Mat__max_row_sum, self, value)
+
+#' @rdname Mat
+#' @usage NULL
+#' @export
+`$.Mat` <- function (self, name) { func <- Mat[[name]]; environment(func) <- environment(); func }
+
+#' @export
+`[[.Mat` <- `$.Mat`
 
 
 # nolint end
