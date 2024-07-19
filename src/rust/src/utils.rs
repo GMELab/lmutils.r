@@ -1,5 +1,5 @@
 use extendr_api::prelude::*;
-use lmutils::{File, IntoMatrix};
+use lmutils::{File, IntoMatrix, OwnedMatrix};
 use std::{
     mem::MaybeUninit,
     ops::{Deref, DerefMut},
@@ -111,7 +111,7 @@ pub fn matrix(robj: Robj) -> Result<lmutils::Matrix> {
 
     if robj.is_external_pointer() {
         return Ok(
-            Matrix::Ref(extendr_api::externalptr::ExternalPtr::<Matrix>::try_from(
+            Mat::Ref(extendr_api::externalptr::ExternalPtr::<Mat>::try_from(
                 robj,
             )?)
             .into_matrix(),
@@ -339,36 +339,53 @@ pub fn list_files(dir: &Path) -> std::io::Result<Vec<PathBuf>> {
 }
 
 #[derive(Debug)]
-pub enum Matrix {
-    Ref(ExternalPtr<Matrix>),
+pub enum Mat {
+    Ref(ExternalPtr<Mat>),
     Own(lmutils::Matrix),
 }
 
-impl IntoMatrix for Matrix {
-    fn into_matrix(self) -> lmutils::Matrix {
+impl Mat {
+    pub fn ptr(&mut self) -> ExternalPtr<Self> {
         match self {
-            r @ Matrix::Ref(_) => lmutils::Matrix::from_deref(r),
-            Matrix::Own(r) => r,
+            Mat::Ref(r) => r.as_robj().clone().try_into().unwrap(),
+            m @ Mat::Own(_) => {
+                let slf = std::mem::replace(
+                    m,
+                    Mat::Own(lmutils::Matrix::Owned(OwnedMatrix::new(0, 0, vec![], None))),
+                );
+                let ptr = ExternalPtr::new(slf);
+                *m = Mat::Ref(ptr);
+                m.ptr()
+            }
         }
     }
 }
 
-impl Deref for Matrix {
+impl IntoMatrix for Mat {
+    fn into_matrix(self) -> lmutils::Matrix {
+        match self {
+            r @ Mat::Ref(_) => lmutils::Matrix::from_deref(r),
+            Mat::Own(r) => r,
+        }
+    }
+}
+
+impl Deref for Mat {
     type Target = lmutils::Matrix;
 
     fn deref(&self) -> &Self::Target {
         match self {
-            Matrix::Ref(r) => r,
-            Matrix::Own(r) => r,
+            Mat::Ref(r) => r,
+            Mat::Own(r) => r,
         }
     }
 }
 
-impl DerefMut for Matrix {
+impl DerefMut for Mat {
     fn deref_mut(&mut self) -> &mut Self::Target {
         match self {
-            Matrix::Ref(r) => &mut *r,
-            Matrix::Own(r) => r,
+            Mat::Ref(r) => &mut *r,
+            Mat::Own(r) => r,
         }
     }
 }

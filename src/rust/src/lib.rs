@@ -16,10 +16,337 @@ pub use crate::utils::{
     maybe_return_vec, named_matrix_list, parallelize, Par,
 };
 use extendr_api::{prelude::*, AsTypedSlice};
-use lmutils::{File, IntoMatrix, Matrix, OwnedMatrix};
+use lmutils::{File, IntoMatrix, Join, Matrix, OwnedMatrix};
 use rayon::{prelude::*, slice::ParallelSliceMut};
 use tracing::{debug, info};
-use utils::maybe_return_paired;
+use utils::{matrix_list, maybe_return_paired};
+
+// MATRIX OBJECT
+type Ptr = ExternalPtr<utils::Mat>;
+
+#[extendr]
+impl utils::Mat {
+    /// Create a new matrix object from a matrix convertable object.
+    /// `data` is a matrix convertable object.
+    /// @export
+    pub fn new(data: Robj) -> Result<Self> {
+        Ok(Self::Own(lmutils::Matrix::from_robj(data)?))
+    }
+
+    /// Load this matrix into an R matrix.
+    /// @export
+    pub fn r(&mut self) -> Result<RMatrix<f64>> {
+        Ok(self.to_rmatrix()?)
+    }
+
+    /// Save this matrix to a file.
+    /// `file` is the name of the file to save to.
+    /// @export
+    pub fn save(&mut self, file: &str) -> Result<()> {
+        Ok(File::from_str(file)?.write(self)?)
+    }
+
+    /// Combine this matrix with other matrices by columns. (`cbind`)
+    /// `data` is a list of matrix convertable objects.
+    /// @export
+    pub fn combine_columns(&mut self, data: Robj) -> Result<Ptr> {
+        self.t_combine_columns(matrix_list(data)?);
+        Ok(self.ptr())
+    }
+
+    /// Combine this matrix with other matrices by rows. (`rbind`)
+    /// `data` is a list of matrix convertable objects.
+    /// @export
+    pub fn combine_rows(&mut self, data: Robj) -> Result<Ptr> {
+        self.t_combine_rows(matrix_list(data)?);
+        Ok(self.ptr())
+    }
+
+    /// Remove columns from this matrix.
+    /// `columns` is a numeric vector of column indices to remove (1-based).
+    /// @export
+    pub fn remove_columns(&mut self, columns: Robj) -> Result<Ptr> {
+        let columns = if columns.is_integer() {
+            columns
+                .as_integer_slice()
+                .unwrap()
+                .iter()
+                .map(|x| *x as usize - 1)
+                .collect::<HashSet<_>>()
+        } else if columns.is_real() {
+            columns
+                .as_real_slice()
+                .unwrap()
+                .iter()
+                .map(|x| *x as usize - 1)
+                .collect::<HashSet<_>>()
+        } else {
+            return Err("columns must be an integer vector".into());
+        };
+        self.t_remove_columns(columns);
+        Ok(self.ptr())
+    }
+
+    /// Remove a column from this matrix by name.
+    /// `column` is the name of the column to remove.
+    /// @export
+    pub fn remove_column(&mut self, column: &str) -> Result<Ptr> {
+        self.t_remove_column_by_name(column);
+        Ok(self.ptr())
+    }
+
+    /// Remove a column from this matrix by name if it exists.
+    /// `column` is the name of the column to remove.
+    /// @export
+    pub fn remove_column_if_exists(&mut self, column: &str) -> Result<Ptr> {
+        self.t_remove_column_by_name_if_exists(column);
+        Ok(self.ptr())
+    }
+
+    /// Remove rows from this matrix.
+    /// `rows` is a numeric vector of row indices to remove (1-based).
+    /// @export
+    pub fn remove_rows(&mut self, rows: Robj) -> Result<Ptr> {
+        let rows = if rows.is_integer() {
+            rows.as_integer_slice()
+                .unwrap()
+                .iter()
+                .map(|x| *x as usize - 1)
+                .collect::<HashSet<_>>()
+        } else if rows.is_real() {
+            rows.as_real_slice()
+                .unwrap()
+                .iter()
+                .map(|x| *x as usize - 1)
+                .collect::<HashSet<_>>()
+        } else {
+            return Err("rows must be an integer vector".into());
+        };
+        self.t_remove_rows(rows);
+        Ok(self.ptr())
+    }
+
+    /// Transpose this matrix.
+    /// @export
+    pub fn transpose(&mut self) -> Result<Ptr> {
+        self.t_transpose();
+        Ok(self.ptr())
+    }
+
+    /// Sort this matrix by the column at the given index.
+    /// `by` is the index of the column to sort by (1-based).
+    /// @export
+    pub fn sort(&mut self, by: u32) -> Result<Ptr> {
+        self.t_sort_by_column(by as usize - 1);
+        Ok(self.ptr())
+    }
+
+    /// Sort this matrix by the column with the given name.
+    /// `by` is the name of the column to sort by.
+    /// @export
+    pub fn sort_by_name(&mut self, by: &str) -> Result<Ptr> {
+        self.t_sort_by_column_name(by);
+        Ok(self.ptr())
+    }
+
+    /// Sort this matrix by the given order of rows.
+    /// `order` is a numeric vector of row indices (1-based).
+    /// @export
+    pub fn sort_by_order(&mut self, order: Robj) -> Result<Ptr> {
+        let order = if order.is_integer() {
+            order
+                .as_integer_slice()
+                .unwrap()
+                .iter()
+                .map(|x| *x as usize - 1)
+                .collect::<Vec<_>>()
+        } else if order.is_real() {
+            order
+                .as_real_slice()
+                .unwrap()
+                .iter()
+                .map(|x| *x as usize - 1)
+                .collect::<Vec<_>>()
+        } else {
+            return Err("order must be an integer vector".into());
+        };
+        self.t_sort_by_order(order);
+        Ok(self.ptr())
+    }
+
+    /// Deduplicate this matrix by a column at the given index. The first occurrence of each value is kept.
+    /// `by` is the index of the column to deduplicate by (1-based).
+    /// @export
+    pub fn dedup(&mut self, by: u32) -> Result<Ptr> {
+        self.t_dedup_by_column(by as usize - 1);
+        Ok(self.ptr())
+    }
+
+    /// Deduplicate this matrix by a column with the given name. The first occurrence of each value
+    /// is kept.
+    /// `by` is the name of the column to deduplicate by.
+    /// @export
+    pub fn dedup_by_name(&mut self, by: &str) -> Result<Ptr> {
+        self.t_dedup_by_column_name(by);
+        Ok(self.ptr())
+    }
+
+    /// Match the rows of this matrix to the values in a vector by a column at the given index.
+    /// `with` is a numeric vector.
+    /// `by` is the index of the column to match by (1-based).
+    /// `join` is the type of join to perform. 0 is inner, 1 is left, and 2 is right. If a row is not matched for a left or right join, it will error.
+    /// @export
+    pub fn match_to(&mut self, with: Robj, by: u32, join: Join) -> Result<Ptr> {
+        let with = if with.is_integer() {
+            with.as_integer_slice()
+                .unwrap()
+                .iter()
+                .map(|x| *x as f64)
+                .collect::<Vec<_>>()
+        } else if with.is_real() {
+            with.as_real_vector().unwrap()
+        } else {
+            return Err("with must be an integer vector".into());
+        };
+        self.t_match_to(with, by as usize - 1, join);
+        Ok(self.ptr())
+    }
+
+    /// Match the rows of this matrix to the values in a vector by a column with the given name.
+    /// `with` is a numeric vector.
+    /// `by` is the name of the column to match by.
+    /// `join` is the type of join to perform. 0 is inner, 1 is left, and 2 is right. If a row is not matched for a left or right join, it will error.
+    /// @export
+    pub fn match_to_by_name(&mut self, with: Robj, by: &str, join: Join) -> Result<Ptr> {
+        let with = if with.is_integer() {
+            with.as_integer_slice()
+                .unwrap()
+                .iter()
+                .map(|x| *x as f64)
+                .collect::<Vec<_>>()
+        } else if with.is_real() {
+            with.as_real_vector().unwrap()
+        } else {
+            return Err("with must be an integer vector".into());
+        };
+        self.t_match_to_by_column_name(with, by, join);
+        Ok(self.ptr())
+    }
+
+    /// Joins this matrix with another matrix by a column at the given index.
+    /// `other` is the matrix to join with.
+    /// `self_by` is the index of the column to join by in this matrix (1-based).
+    /// `other_by` is the index of the column to join by in the other matrix (1-based).
+    /// `join` is the type of join to perform. 0 is inner, 1 is left, and 2 is right. If a row is not matched for a left or right join, it will error.
+    /// @export
+    pub fn join(&mut self, other: Robj, self_by: u32, other_by: u32, join: Join) -> Result<Ptr> {
+        let other = matrix(other)?;
+        self.t_join(other, self_by as usize - 1, other_by as usize - 1, join);
+        Ok(self.ptr())
+    }
+
+    /// Joins this matrix with another matrix by a column with the given name.
+    /// `other` is the matrix to join with.
+    /// `by` is the name of the column to join the matrices by.
+    /// `join` is the type of join to perform. 0 is inner, 1 is left, and 2 is right. If a row is not matched for a left or right join, it will error.
+    /// @export
+    pub fn join_by_name(&mut self, other: Robj, by: &str, join: Join) -> Result<Ptr> {
+        let other = matrix(other)?;
+        self.t_join_by_column_name(other, by, join);
+        Ok(self.ptr())
+    }
+
+    /// Standardizes this matrix so that each column has a mean of 0 and a standard deviation of 1.
+    /// @export
+    pub fn standardize_columns(&mut self) -> Result<Ptr> {
+        self.t_standardize_columns();
+        Ok(self.ptr())
+    }
+
+    /// Standardizes this matrix so that each row has a mean of 0 and a standard deviation of 1.
+    /// @export
+    pub fn standardize_rows(&mut self) -> Result<Ptr> {
+        self.t_standardize_rows();
+        Ok(self.ptr())
+    }
+
+    /// Remove rows from this matrix that containing any NA values.
+    /// @export
+    pub fn remove_na_rows(&mut self) -> Result<Ptr> {
+        self.t_remove_nan_rows();
+        Ok(self.ptr())
+    }
+
+    /// Remove columns from this matrix that containing any NA values.
+    /// @export
+    pub fn remove_na_columns(&mut self) -> Result<Ptr> {
+        self.t_remove_nan_columns();
+        Ok(self.ptr())
+    }
+
+    /// Replace all NA values in this matrix with the given value.
+    /// `value` is the value to replace NA values with.
+    /// @export
+    pub fn na_to_value(&mut self, value: Robj) -> Result<Ptr> {
+        let value = if value.is_integer() {
+            value.as_integer().unwrap() as f64
+        } else if value.is_real() {
+            value.as_real().unwrap()
+        } else {
+            return Err("value must be a numeric scalar".into());
+        };
+        self.t_nan_to_value(value);
+        Ok(self.ptr())
+    }
+
+    /// Replace all NA values in this matrix with the mean of the column.
+    /// @export
+    pub fn na_to_column_mean(&mut self) -> Result<Ptr> {
+        self.t_nan_to_column_mean();
+        Ok(self.ptr())
+    }
+
+    /// Replace all NA values in this matrix with the mean of the row.
+    /// @export
+    pub fn na_to_row_mean(&mut self) -> Result<Ptr> {
+        self.t_nan_to_row_mean();
+        Ok(self.ptr())
+    }
+
+    /// Remove all columns from this matrix whose sum is less than the given value.
+    /// `value` is the minimum sum a column must have to be kept.
+    /// @export
+    pub fn min_column_sum(&mut self, value: f64) -> Result<Ptr> {
+        self.t_min_column_sum(value);
+        Ok(self.ptr())
+    }
+
+    /// Remove all columns from this matrix whose sum is greater than the given value.
+    /// `value` is the maximum sum a column must have to be kept.
+    /// @export
+    pub fn max_column_sum(&mut self, value: f64) -> Result<Ptr> {
+        self.t_max_column_sum(value);
+        Ok(self.ptr())
+    }
+
+    /// Remove all rows from this matrix whose sum is less than the given value.
+    /// `value` is the minimum sum a row must have to be kept.
+    /// @export
+    pub fn min_row_sum(&mut self, value: f64) -> Result<Ptr> {
+        self.t_min_row_sum(value);
+        Ok(self.ptr())
+    }
+
+    /// Remove all rows from this matrix whose sum is greater than the given value.
+    /// `value` is the maximum sum a row must have to be kept.
+    /// @export
+    pub fn max_row_sum(&mut self, value: f64) -> Result<Ptr> {
+        self.t_max_row_sum(value);
+        Ok(self.ptr())
+    }
+}
+
+// END MATRIX OBJECT
 
 // MATRIX FUNCTIONS
 
@@ -198,7 +525,7 @@ pub fn combine_vectors(data: List, out: Nullable<&str>) -> Result<Nullable<RMatr
 /// Remove rows from a matrix.
 /// `data` is a list of matrix convertable objects.
 /// `rows` is a vector of row indices to remove (1-based).
-/// `out` is a standard non-mutating output.
+/// `out` is a standard output file.
 /// @export
 #[extendr]
 pub fn remove_rows(data: Robj, rows: Robj, out: Robj) -> Result<Robj> {
@@ -225,7 +552,7 @@ pub fn remove_rows(data: Robj, rows: Robj, out: Robj) -> Result<Robj> {
 
 /// Computes the cross product of the matrix. Equivalent to `t(data) %*% data`.
 /// `data` is a list of matrix convertable objects.
-/// `out` is a standard non-mutating output.
+/// `out` is a standard output file.
 /// @export
 #[extendr]
 pub fn crossprod(data: Robj, out: Nullable<Robj>) -> Result<Robj> {
@@ -239,7 +566,7 @@ pub fn crossprod(data: Robj, out: Nullable<Robj>) -> Result<Robj> {
 /// Multiply two matrices. Equivalent to `a %*% b`.
 /// `a` is a list of matrix convertable objects.
 /// `b` is a list of matrix convertable objects.
-/// `out` is a standard non-mutating output.
+/// `out` is a standard output file.
 /// @export
 #[extendr]
 pub fn mul(a: Robj, b: Robj, out: Nullable<Robj>) -> Result<Robj> {
@@ -263,7 +590,7 @@ pub fn load(obj: Robj) -> Result<Robj> {
 /// `data` is a list of matrix convertable objects.
 /// `with` is a numeric vector.
 /// `by` is the column to match by.
-/// `out` is a standard non-mutating output.
+/// `out` is a standard output file.
 /// @export
 #[extendr]
 pub fn match_rows(data: Robj, with: Robj, by: &str, out: Robj) -> Result<Robj> {
@@ -323,7 +650,7 @@ pub fn match_rows_dir(from: &str, to: &str, with: &[f64], by: &str) -> Result<()
 /// Deduplicate a matrix by a column. The first occurrence of each value is kept.
 /// `data` is a list of matrix convertable objects.
 /// `by` is the column to deduplicate by.
-/// `out` is a standard non-mutating output.
+/// `out` is a standard output file.
 /// @export
 #[extendr]
 pub fn dedup(data: Robj, by: &str, out: Robj) -> Result<Robj> {
@@ -647,6 +974,7 @@ pub fn internal_lmutils_file_into_fd(file: &str, fd: i32) {
 /// `from` is a list of matrix convertable objects.
 /// `to` is a list of file names to write to.
 /// @export
+/// @deprecated
 #[extendr]
 #[deprecated]
 pub fn convert_file(from: Robj, to: &[Rstr]) -> Result<()> {
@@ -660,6 +988,7 @@ pub fn convert_file(from: Robj, to: &[Rstr]) -> Result<()> {
 /// `mat` must be a double matrix.
 /// `out` is the name of the file to save to.
 /// @export
+/// @deprecated
 #[extendr]
 #[deprecated]
 pub fn save_matrix(mat: Robj, out: &[Rstr]) -> Result<()> {
@@ -674,6 +1003,7 @@ pub fn save_matrix(mat: Robj, out: &[Rstr]) -> Result<()> {
 /// `out` is the name of the file to save to.
 /// If `out` is `NULL`, the matrix is returned otherwise `NULL`.
 /// @export
+/// @deprecated
 #[extendr]
 #[deprecated]
 pub fn to_matrix(df: Robj, out: Nullable<Robj>) -> Result<Robj> {
@@ -685,6 +1015,7 @@ pub fn to_matrix(df: Robj, out: Nullable<Robj>) -> Result<Robj> {
 /// `out` is a file name to write the normalized matrix to or `NULL` to return the normalized
 /// matrix.
 /// @export
+/// @deprecated
 #[extendr]
 #[deprecated]
 pub fn standardize(data: Robj, out: Robj) -> Result<Robj> {
@@ -701,6 +1032,7 @@ pub fn standardize(data: Robj, out: Robj) -> Result<Robj> {
 /// `file_type` is the file extension to write as.
 /// If `to` is `NULL`, the files are written to `from`.
 /// @export
+/// @deprecated
 #[extendr]
 #[deprecated]
 pub fn to_matrix_dir(from: &str, to: Nullable<&str>, file_type: &str) -> Result<()> {
@@ -713,6 +1045,7 @@ pub fn to_matrix_dir(from: &str, to: Nullable<&str>, file_type: &str) -> Result<
 /// `out` is a file name to write the combined matrix to.
 /// If `out` is `NULL`, the combined matrix is returned otherwise `NULL`.
 /// @export
+/// @deprecated
 #[extendr]
 #[deprecated]
 pub fn extend_matrices(data: Robj, out: Nullable<Robj>) -> Result<Nullable<Robj>> {
@@ -727,6 +1060,7 @@ pub fn extend_matrices(data: Robj, out: Nullable<Robj>) -> Result<Nullable<Robj>
 /// This is the number of primary operations to perform at once.
 /// `num` is the number of main threads.
 /// @export
+/// @deprecated
 #[extendr]
 #[deprecated]
 pub fn set_num_main_threads(num: u32) {
@@ -739,6 +1073,7 @@ pub fn set_num_main_threads(num: u32) {
 /// `out` is a file name to write the combined matrix to.
 /// If `out` is `NULL`, the combined matrix is returned otherwise `NULL`.
 /// @export
+/// @deprecated
 #[extendr]
 #[deprecated]
 pub fn combine_matrices(data: Robj, out: Nullable<Robj>) -> Result<Nullable<Robj>> {
@@ -752,6 +1087,7 @@ pub fn combine_matrices(data: Robj, out: Nullable<Robj>) -> Result<Nullable<Robj
 /// Load a matrix from a file.
 /// `file` is the name of the file to load from.
 /// @export
+/// @deprecated
 #[extendr]
 pub fn load_matrix(file: Robj) -> Result<Robj> {
     maybe_return_paired(file, ().into(), Ok)

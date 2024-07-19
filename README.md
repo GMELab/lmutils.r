@@ -3,6 +3,7 @@
 ## Table of Contents
 [Installation](#installation)
 [Important Information](#important)
+[Mat Objects](#mat)
 [Matrix Functions](#matrix)
 [Data Frame Functions](#data)
 [Configuration](#configuration)
@@ -27,9 +28,9 @@ devtools::install_github("mrvillage/lmutils.r")
 ## Important Information
 
 ### Terms
-- Matrix convertable object - a data frame, matrix, file name (to read from), or column vector.
+- Matrix convertable object - a data frame, matrix, file name (to read from), a numeric column vector, or a `Mat` object.
 - List of matrix convertable objects - a list of matrix convertable objects, a character vector of file names (to read from), or a single matrix convertable object.
-- Standard non-mutating output - a character vector of file names matching the length of the inputs, or `NULL` to return the output. If a single input, not in a list, was provided, the output will not be in a list.
+- Standard output file - a character vector of file names matching the length of the inputs, or `NULL` to return the output. If a single input, not in a list, was provided, the output will not be in a list.
 
 ### File Types
 - `csv` (requires column headers)
@@ -40,6 +41,275 @@ devtools::install_github("mrvillage/lmutils.r")
 - `rkyv`
 - `rdata` (NOTE: these files can only be processed sequentially, not in parallel like the rest)
 All files can be optionally compressed with `gzip`, `rdata` files are assumed to be compressed without looking for a `.gz` file extension.
+
+## `Mat` Objects
+
+`lmutils::Mat` objects are a way to store matrices in memory and perform operations on them. They can be used to store operations or chain operations together for later execution. This can be useful if, for example, you wish to a hundred large matrices from files and standardize them all before using `lmutils::calculate_r2`. Using `Mat` objects, you can store the operations you wish to perform and `Mat` will execute them only when the matrix is loaded.
+
+### `lmutils::Mat$new`
+
+Creates a new `Mat` object.
+- `data` is a matrix convertable object.
+
+```r
+mat <- lmutils::Mat$new("matrix1.csv")
+```
+
+### `lmutils::Mat$r`
+
+Loads the matrix from the `Mat` object.
+
+```r
+m <- mat$r()
+```
+
+### `lmutils::Mat$save`
+
+Saves the matrix to a file.
+- `file` is the file name to write to.
+
+```r
+mat$save("matrix1.rkyv.gz")
+```
+
+### `lmutils::Mat$combine_columns`
+
+Combines this matrix with other matrices by columns. (`cbind`)
+- `data` is a list of matrix convertable objects.
+
+```r
+mat$combine_columns("matrix2.csv")
+```
+
+### `lmutils::Mat$combine_rows`
+
+Combines this matrix with other matrices by rows. (`rbind`)
+- `data` is a list of matrix convertable objects.
+
+```r
+mat$combine_rows("matrix2.csv")
+```
+
+### `lmutils::Mat$remove_columns`
+
+Removes columns from the matrix.
+- `columns` is a vector of column indices (1-based) to remove.
+
+```r
+mat$remove_columns(c(1, 2, 3))
+```
+
+### `lmutils::Mat$remove_column`
+
+Removes a column from the matrix by name.
+- `column` is the column name to remove.
+
+```r
+mat$remove_column("eid")
+```
+
+### `lmutils::Mat$remove_column_if_exists`
+
+Removes a column from the matrix by name if it exists.
+- `column` is the column name to remove.
+
+```r
+mat$remove_column_if_exists("eid")
+```
+
+### `lmutils::Mat$remove_rows`
+
+Removes rows from the matrix.
+- `rows` is a vector of row indices (1-based) to remove.
+
+```r
+mat$remove_rows(c(1, 2, 3))
+```
+
+### `lmutils::Mat$transpose`
+
+Transposes the matrix.
+
+```r
+mat$transpose()
+```
+
+### `lmutils::Mat$sort`
+
+Sort by the column at the given index.
+- `by` is the column index (1-based) to sort by.
+
+```r
+mat$sort(1)
+```
+
+### `lmutils::Mat$sort_by_name`
+
+Sort by the column with the given name.
+- `by` is the column name to sort by.
+
+```r
+mat$sort_by_name("eid")
+```
+
+### `lmutils::Mat$sort_by_order`
+
+Sort by the given order of rows.
+- `order` is a vector of row indices (1-based) to sort by.
+
+```r
+mat$sort_by_order(c(3, 2, 1))
+```
+
+### `lmutils::Mat$dedup`
+
+Deduplicate the matrix by a column.
+- `by` is the column index (1-based) to deduplicate by.
+
+```r
+mat$dedup(1)
+```
+
+### `lmutils::Mat$dedup_by_name`
+
+Deduplicate the matrix by a column name.
+- `by` is the column name to deduplicate by.
+
+```r
+mat$dedup_by_name("eid")
+```
+
+### `lmutils::Mat$match_to`
+
+Match the rows of the matrix to the values in a vector by a column.
+- `with` is a numeric vector to match the rows to.
+- `by` is the column index (1-based) to match the rows by.
+- `join` is the type of join to perform. 0 is inner, 1 is left, 2 is right, and 3 is full. If a row is not matched for a left or right join, it will error.
+
+```r
+mat$match_to(c(1, 2, 3), 1, 0)
+```
+
+### `lmutils::Mat$match_to_by_name`
+
+Match the rows of the matrix to the values in a vector by a column name.
+- `with` is a numeric vector to match the rows to.
+- `by` is the column name to match the rows by.
+- `join` is the type of join to perform. 0 is inner, 1 is left, 2 is right, and 3 is full. If a row is not matched for a left or right join, it will error.
+
+```r
+mat$match_to_by_name(c(1, 2, 3), "eid", 0)
+```
+
+### `lmutils::Mat$join`
+
+Join the matrix with another matrix by a column.
+- `other` is a matrix convertable object.
+- `by` is the column index (1-based) to join by.
+- `join` is the type of join to perform. 0 is inner, 1 is left, 2 is right, and 3 is full. If a row is not matched for a left or right join, it will error.
+
+```r
+mat$join("matrix2.csv", 1, 0)
+```
+
+### `lmutils::Mat$join_by_name`
+
+Join the matrix with another matrix by a column name.
+- `other` is a matrix convertable object.
+- `by` is the column name to join by.
+- `join` is the type of join to perform. 0 is inner, 1 is left, 2 is right, and 3 is full. If a row is not matched for a left or right join, it will error.
+
+```r
+mat$join_by_name("matrix2.csv", "eid", 0)
+```
+
+### `lmutils::Mat$standardize_columns`
+
+Standardize the columns of the matrix to have a mean of 0 and a standard deviation of 1.
+
+```r
+mat$standardize_columns()
+```
+
+### `lmutils::Mat$standardize_rows`
+
+Standardize the rows of the matrix to have a mean of 0 and a standard deviation of 1.
+
+```r
+mat$standardize_rows()
+```
+
+### `lmutils::Mat$remove_na_rows`
+
+Remove rows with any `NA` values.
+
+```r
+mat$remove_na_rows()
+```
+
+### `lmutils::Mat$remove_na_columns`
+
+Remove columns with any `NA` values.
+
+```r
+mat$remove_na_columns()
+```
+
+### `lmutils::Mat$na_to_value`
+
+Replace all `NA` values with a given value.
+
+```r
+mat$na_to_value(0)
+```
+
+### `lmutils::Mat$na_to_column_mean`
+
+Replace all `NA` values with the mean of the column.
+
+```r
+mat$na_to_column_mean()
+```
+
+### `lmutils::Mat$na_to_row_mean`
+
+Replace all `NA` values with the mean of the row.
+
+```r
+mat$na_to_row_mean()
+```
+
+### `lmutils::Mat$min_column_sum`
+
+Remove columns with a sum less than a given value.
+
+```r
+mat$min_column_sum(10)
+```
+
+### `lmutils::Mat$max_column_sum`
+
+Remove columns with a sum greater than a given value.
+
+```r
+mat$max_column_sum(10)
+```
+
+### `lmutils::Mat$min_row_sum`
+
+Remove rows with a sum less than a given value.
+
+```r
+mat$min_row_sum(10)
+```
+
+### `lmutils::Mat$max_row_sum`
+
+Remove rows with a sum greater than a given value.
+
+```r
+mat$max_row_sum(10)
+```
 
 ## Matrix Functions
 
@@ -117,7 +387,7 @@ lmutils::combine_vectors(
 Removes rows from a matrix.
 - `data` is list of matrix convertable objects.
 - `rows` is a vector of row indices (1-based) to remove.
-- `out` is a standard non-mutating output.
+- `out` is a standard output file.
 
 ```r
 lmutils::remove_rows(
@@ -131,7 +401,7 @@ lmutils::remove_rows(
 
 Calculates the cross product of two matrices. Equivalent to `t(data) %*% data`.
 - `data` is a list of matrix convertable objects.
-- `out` is a standard non-mutating output.
+- `out` is a standard output file.
 
 ```r
 lmutils::crossprod(
@@ -145,7 +415,7 @@ lmutils::crossprod(
 Multiplies two matrices. Equivalent to `a %*% b`.
 - `a` is a list of matrix convertable objects.
 - `b` is a list of matrix convertable objects.
-- `out` is a standard non-mutating output.
+- `out` is a standard output file.
 
 ```r
 lmutils::mul(
@@ -171,7 +441,7 @@ Matches rows of a matrix by the values of a vector.
 - `data` is a list of matrix convertable objects.
 - `with` is a numeric vector.
 - `by` is the column name to match the rows by.
-- `out` is a standard non-mutating output.
+- `out` is a standard output file.
 
 ```r
 lmutils::match_rows(
@@ -204,7 +474,7 @@ lmutils::match_rows_dir(
 Deduplicate a matrix by a column. The first occurrence of each value is kept.
 - `data` is a list of matrix convertable objects.
 - `by` is the column name to deduplicate by.
-- `out` is a standard non-mutating output.
+- `out` is a standard output file.
 
 ```r
 lmutils::dedup(
