@@ -702,7 +702,7 @@ lmutils::df_sort_asc(
 
 ### `lmutils::df_split`
 
-Splits a data frame into multiple data frames by a column.
+Splits a data frame into multiple data frames by a column. This function will mutably sort the data frame by the column before splitting.
 - `df` is a data frame.
 - `by` is the column name to split by.
 
