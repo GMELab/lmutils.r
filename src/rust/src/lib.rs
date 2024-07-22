@@ -41,6 +41,25 @@ impl Mat {
         Ok(self.to_rmatrix()?)
     }
 
+    /// Loads the matrix and gets a column by name or index.
+    /// `column` is the name or index of the column to get.
+    /// @export
+    pub fn col(&mut self, column: Robj) -> Result<Robj> {
+        let column = if column.is_integer() {
+            column.as_integer().unwrap() as usize - 1
+        } else if column.is_string() {
+            let column = column.as_str().unwrap();
+            self.column_index(column)?
+        } else {
+            return Err("column must be a string or integer".into());
+        };
+        let mat: &mut lmutils::Matrix = &mut *self;
+        Ok(mat
+            .col(column)?
+            .map(|x| x.to_vec().into_robj())
+            .unwrap_or(().into()))
+    }
+
     /// Save this matrix to a file.
     /// `file` is the name of the file to save to.
     /// @export
@@ -344,6 +363,24 @@ impl Mat {
     /// @export
     pub fn max_row_sum(&mut self, value: f64) -> Result<Ptr> {
         self.t_max_row_sum(value);
+        Ok(self.ptr())
+    }
+
+    /// Rename a column in this matrix.
+    /// `old` is the name of the column to rename.
+    /// `new` is the new name of the column.
+    /// @export
+    pub fn rename_column(&mut self, old: &str, new: &str) -> Result<Ptr> {
+        self.t_rename_column(old, new);
+        Ok(self.ptr())
+    }
+
+    /// Rename a column in this matrix if it exists.
+    /// `old` is the name of the column to rename.
+    /// `new` is the new name of the column.
+    /// @export
+    pub fn rename_column_if_exists(&mut self, old: &str, new: &str) -> Result<Ptr> {
+        self.t_rename_column_if_exists(old, new);
         Ok(self.ptr())
     }
 }

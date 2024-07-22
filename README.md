@@ -5,6 +5,8 @@
 - [Important Information](#important-information)
   - [Terms](#terms)
   - [File Types](#file-types)
+- [Introduction](#introduction)
+  - [Example](#example)
 - [Mat Objects](#mat-objects)
   - [`lmutils::Mat$new`](#lmutilsmatnew)
   - [`lmutils::Mat$r`](#lmutilsmatr)
@@ -36,6 +38,8 @@
   - [`lmutils::Mat$max_column_sum`](#lmutilsmatmax_column_sum)
   - [`lmutils::Mat$min_row_sum`](#lmutilsmatmin_row_sum)
   - [`lmutils::Mat$max_row_sum`](#lmutilsmatmax_row_sum)
+  - [`lmutils::Mat$rename_column`](#lmutilsmatrename_column)
+  - [`lmutils::Mat$rename_column_if_exists`](#lmutilsmatrename_column_if_exists)
 - [Matrix Functions](#matrix-functions)
   - [`lmutils::save`](#lmutilssave)
   - [`lmutils::save_dir`](#lmutilssave_dir)
@@ -91,6 +95,59 @@ devtools::install_github("mrvillage/lmutils.r")
 - `rdata` (NOTE: these files can only be processed sequentially, not in parallel like the rest)
 All files can be optionally compressed with `gzip`, `rdata` files are assumed to be compressed without looking for a `.gz` file extension.
 
+## Introduction
+
+`lmutils` is an R package that provides utilities for working with matrices and data frames. It is built on top of the [Rust programming language](https://rust-lang.org) for performance and safety. The package provides a way to store matrices in memory and perform operations on them, as well as functions for working with data frames.
+
+`lmutils` is built primarily around the `Mat` object. These are designed to be used to perform operations on matrices without loading them into memory until necessary. This can be useful for working with lots of large matrices, like hundreds of gene blocks.
+
+To get started with your first `Mat` object, you can use the following code:
+
+```r
+mat <- lmutils::Mat$new("matrix1.csv")
+```
+
+This will create a new `Mat` object from a file. You can then perform operations on this object, like combining it with other matrices, removing columns, or standardizing the columns. If you want this matrix to be loaded into R, you can use the `r` method:
+
+```r
+mat$combine_columns("matrix2.csv")
+mat$remove_columns(c(1, 2, 3))
+mat$standardize_columns()
+m <- mat$r()
+```
+
+You can also pass the object directly into functions that accept a matrix convertable object, it'll then be loaded automatically (with all the stored operations applied) only when needed.
+
+```r
+lmutils::calculate_r2(
+    mat,
+    "outcomes1.RData",
+)
+```
+
+### Example
+
+```r
+outcomes <- lmutils::Mat$new("outcomes.RData")
+geneBlocks <- lapply(c(
+    "geneBlock1.csv",
+    "geneBlock2.csv",
+    "geneBlock3.csv",
+    "geneBlock4.csv",
+    "geneBlock5.csv",
+), function(mat) {
+    mat <- lmutils::Mat$new(mat)
+    mat$match_to_by_name(outcomes$col("eid"), "IID", 0)
+    mat$remove_column("IID")
+    mat$min_column_sum(2)
+    mat$na_to_column_mean()
+    mat$standardize_columns()
+    mat
+})
+outcomes$remove_column("eid")
+results <- lmutils::calculate_r2(geneBlocks, outcomes)
+```
+
 ## `Mat` Objects
 
 `lmutils::Mat` objects are a way to store matrices in memory and perform operations on them. They can be used to store operations or chain operations together for later execution. This can be useful if, for example, you wish to a hundred large matrices from files and standardize them all before using `lmutils::calculate_r2`. Using `Mat` objects, you can store the operations you wish to perform and `Mat` will execute them only when the matrix is loaded.
@@ -110,6 +167,15 @@ Loads the matrix from the `Mat` object.
 
 ```r
 m <- mat$r()
+```
+
+### `lmutils::Mat$col`
+
+Get a column by name or index.
+
+```r
+col <- mat$col("eid")
+col <- mat$col(1)
 ```
 
 ### `lmutils::Mat$save`
@@ -358,6 +424,22 @@ Remove rows with a sum greater than a given value.
 
 ```r
 mat$max_row_sum(10)
+```
+
+### `lmutils::Mat$rename_column`
+
+Rename a column by name.
+
+```r
+mat$rename_column("IID", "eid")
+```
+
+### `lmutils::Mat$rename_column_if_exists`
+
+Rename a column by name if it exists.
+
+```r
+mat$rename_column_if_exists("IID", "eid")
 ```
 
 ## Matrix Functions
