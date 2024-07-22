@@ -700,6 +700,20 @@ lmutils::df_sort_asc(
 )
 ```
 
+### `lmutils::df_split`
+
+Splits a data frame into multiple data frames by a column.
+- `df` is a data frame.
+- `by` is the column name to split by.
+
+```r
+df <- data.frame(a=c(1, 2, 3), b=c("a", "b", "c"))
+lmutils::df_split(
+    df,
+    "b",
+)
+```
+
 ## Configuration
 
 `lmutils` exposes three global config options that can be set using environment variables or the `lmutils` package functions:

@@ -6,7 +6,7 @@
 \alias{$.Mat}
 \title{\code{lmutils::Mat} objects are a way to store matrices in memory and perform operations on them. They can be used to store operations or chain operations together for later execution. This can be useful if, for example, you wish to a hundred large matrices from files and standardize them all before using \code{lmutils::calculate_r2}. Using \code{Mat} objects, you can store the operations you wish to perform and \code{Mat} will execute them only when the matrix is loaded.}
 \format{
-An object of class \code{environment} of length 30.
+An object of class \code{environment} of length 33.
 }
 \usage{
 Mat

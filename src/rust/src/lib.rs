@@ -467,12 +467,12 @@ pub fn calculate_r2(data: Robj, outcomes: Robj) -> Result<Robj> {
     debug!("Calculated R^2");
     debug!("Results {:?}", res);
     let mut df = data_frame!(
-        r2 = res.iter().map(|r| r.r2()).collect::<Vec<_>>(),
-        adj_r2 = res.iter().map(|r| r.adj_r2()).collect::<Vec<_>>(),
-        data = res.iter().map(|r| r.data()).collect::<Vec<_>>(),
-        outcome = res.iter().map(|r| r.outcome()).collect::<Vec<_>>(),
-        n = res.iter().map(|r| r.n()).collect::<Vec<_>>(),
-        m = res.iter().map(|r| r.m()).collect::<Vec<_>>(),
+        r2 = res.iter().map(|r| r.r2()).collect_robj(),
+        adj_r2 = res.iter().map(|r| r.adj_r2()).collect_robj(),
+        data = res.iter().map(|r| r.data()).collect_robj(),
+        outcome = res.iter().map(|r| r.outcome()).collect_robj(),
+        n = res.iter().map(|r| r.n()).collect_robj(),
+        m = res.iter().map(|r| r.m()).collect_robj(),
         predicted = res.iter().map(|_| 0).collect::<Vec<_>>()
     )
     .as_list()
@@ -856,11 +856,21 @@ impl<'a> Col<'a> {
             Col::Logical(v) => v.len(),
         }
     }
+
+    fn cmps(&self) -> Vec<Cmp> {
+        match self {
+            Col::Str(v) => v.iter().map(|s| Cmp::Str(s.to_string())).collect(),
+            Col::Int(v) => v.iter().map(|i| Cmp::Int(*i)).collect(),
+            Col::Real(v) => v.iter().map(|f| Cmp::Real(*f)).collect(),
+            Col::Logical(v) => v.iter().map(|b| Cmp::Int(b.inner() as i32)).collect(),
+        }
+    }
 }
 
-/// Mutably sorts a data frame in ascending order by multiple columns in ascending order. All columns must be numeric (double or integer), character, or logical vectors.
+/// Mutably sorts a data frame in ascending order by multiple columns in ascending order.
 /// `df` is a data frame.
-/// `columns` is a character vector of columns to sort by.
+/// `columns` is a character vector of columns to sort by. The sort columns must be numeric
+/// (integer or double), character, or logical vectors.
 /// @export
 #[extendr]
 pub fn df_sort_asc(df: List, columns: &[Rstr]) -> Result<Robj> {
@@ -918,9 +928,166 @@ pub fn df_sort_asc(df: List, columns: &[Rstr]) -> Result<Robj> {
             let slice: &mut [Rbool] = col.as_typed_slice_mut().unwrap();
             let new = indices.iter().map(|&i| slice[i]).collect::<Vec<_>>();
             slice.clone_from_slice(&new);
+        } else if col.is_list() {
+            let mut list = col.as_list().unwrap();
+            let new = indices
+                .iter()
+                .map(|&i| list.elt(i).unwrap().clone())
+                .collect::<Vec<_>>();
+            for (i, v) in new.into_iter().enumerate() {
+                list.set_elt(i, v).unwrap();
+            }
+        } else {
+            panic!("column must be a vector");
         }
     });
     Ok(().into())
+}
+
+#[derive(Clone, Debug)]
+enum Cmp {
+    Str(String),
+    Int(i32),
+    Real(f64),
+}
+
+impl Cmp {
+    fn cmp(&self, other: &Cmp) -> Ordering {
+        match (self, other) {
+            (Cmp::Str(a), Cmp::Str(b)) => a.cmp(b),
+            (Cmp::Int(a), Cmp::Int(b)) => a.cmp(b),
+            (Cmp::Real(a), Cmp::Real(b)) => a.partial_cmp(b).unwrap(),
+            _ => panic!("cannot compare different types"),
+        }
+    }
+
+    fn into_string(self) -> String {
+        match self {
+            Cmp::Str(s) => s,
+            Cmp::Int(i) => i.to_string(),
+            Cmp::Real(f) => f.to_string(),
+        }
+    }
+}
+
+impl PartialEq for Cmp {
+    fn eq(&self, other: &Self) -> bool {
+        self.cmp(other) == Ordering::Equal
+    }
+}
+
+/// Splits a data frame into multiple data frames by a column. This function will mutably sort the
+/// data frame by the column before splitting.
+/// `df` is a data frame.
+/// `by` is the column to split by. The column must be a numeric (integer or double) or character
+/// vector.
+/// @export
+#[extendr]
+pub fn df_split(df: List, by: &str) -> Result<Robj> {
+    df_sort_asc(df.clone(), &[by.into()])?;
+    let (_, col) = df
+        .iter()
+        .find(|(n, _)| *n == by)
+        .unwrap_or_else(|| panic!("column {} not found", by));
+    let unique = if col.is_string() {
+        let mut col = col.as_str_vector().unwrap().to_vec();
+        col.dedup();
+        col.len()
+    } else if col.is_integer() {
+        let mut col = col.as_integer_slice().unwrap().to_vec();
+        col.dedup();
+        col.len()
+    } else if col.is_real() {
+        let mut col = col.as_real_slice().unwrap().to_vec();
+        col.dedup();
+        col.len()
+    } else {
+        panic!("column must be a character, integer, or real vector");
+    };
+    if unique == 1 {
+        return Ok(df.into_robj());
+    }
+    let col = if col.is_string() {
+        Col::Str(col.as_str_vector().unwrap())
+    } else if col.is_integer() {
+        Col::Int(col.as_integer_slice().unwrap())
+    } else if col.is_real() {
+        Col::Real(col.as_real_slice().unwrap())
+    } else {
+        panic!("column must be a character, integer, or real vector");
+    };
+    let col = col.cmps();
+    if col.is_empty() {
+        return Ok(df.into_robj());
+    }
+    let mut dfs = Vec::with_capacity(unique);
+    let mut next = 0;
+    let mut start = 0;
+    let mut current = col[0].clone();
+    let names = df.iter().map(|(n, _)| n).collect::<Vec<_>>();
+    let values = df.iter().map(|(_, v)| v).collect::<Vec<_>>();
+    let mut group = |i, c: Cmp, force| -> Result<()> {
+        if c != current || force {
+            let subset = values
+                .iter()
+                .map(|v| {
+                    if v.is_string() {
+                        let v = v.as_str_vector().unwrap();
+                        v[start..i]
+                            .iter()
+                            // .map(|s| s.to_string())
+                            .collect::<Vec<_>>()
+                            .into_robj()
+                    } else if v.is_integer() {
+                        let v = v.as_integer_slice().unwrap();
+                        v[start..i].to_vec().into_robj()
+                    } else if v.is_real() {
+                        let v = v.as_real_slice().unwrap();
+                        v[start..i].to_vec().into_robj()
+                    } else if v.is_logical() {
+                        let v = v.as_logical_slice().unwrap();
+                        v[start..i].to_vec().into_robj()
+                    } else if v.is_list() {
+                        List::from_values(
+                            v.as_list()
+                                .unwrap()
+                                .iter()
+                                .skip(start)
+                                .take(i - start)
+                                .map(|(_, v)| v),
+                        )
+                        .into_robj()
+                    } else {
+                        panic!("column must be a vector");
+                    }
+                })
+                .collect::<Vec<_>>();
+            let l = i - start;
+            let df = List::from_names_and_values(names.clone(), subset)?;
+            df.set_class(&["data.frame"])?;
+            df.set_attrib(
+                row_names_symbol(),
+                (1..=l).map(|x| x.to_string()).collect_robj(),
+            )?;
+            next += 1;
+            let r = std::mem::replace(&mut current, c);
+            dfs.push((r, df));
+            start = i;
+        }
+        Ok(())
+    };
+    let len = col.len();
+    let last = col[col.len() - 1].clone();
+    for (i, c) in col.into_iter().enumerate() {
+        group(i, c, false)?;
+    }
+    group(len, last, true)?;
+
+    Ok(List::from_pairs(
+        dfs.into_iter()
+            .map(|(n, df)| (n.into_string(), df.into_robj())),
+    )
+    .into_robj())
 }
 
 // END DATA FRAME FUNCTIONS
@@ -1151,6 +1318,7 @@ extendr_module! {
     fn new_column_from_map;
     fn new_column_from_map_pairs;
     fn df_sort_asc;
+    fn df_split;
 
     fn set_log_level;
     fn set_core_parallelism;

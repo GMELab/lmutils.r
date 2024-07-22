@@ -124,11 +124,20 @@ new_column_from_map <- function(df, column, values, new_column) .Call(wrap__new_
 #' @export
 new_column_from_map_pairs <- function(df, column, names, values, new_column) .Call(wrap__new_column_from_map_pairs, df, column, names, values, new_column)
 
-#' Mutably sorts a data frame in ascending order by multiple columns in ascending order. All columns must be numeric (double or integer), character, or logical vectors.
+#' Mutably sorts a data frame in ascending order by multiple columns in ascending order.
 #' `df` is a data frame.
-#' `columns` is a character vector of columns to sort by.
+#' `columns` is a character vector of columns to sort by. The sort columns must be numeric
+#' (integer or double), character, or logical vectors.
 #' @export
 df_sort_asc <- function(df, columns) .Call(wrap__df_sort_asc, df, columns)
+
+#' Splits a data frame into multiple data frames by a column. This function will mutably sort the
+#' data frame by the column before splitting.
+#' `df` is a data frame.
+#' `by` is the column to split by. The column must be a numeric (integer or double) or character
+#' vector.
+#' @export
+df_split <- function(df, by) .Call(wrap__df_split, df, by)
 
 #' Set the log level.
 #' `level` is the log level.
@@ -228,6 +237,8 @@ Mat$new <- function(data) .Call(wrap__Mat__new, data)
 
 Mat$r <- function() .Call(wrap__Mat__r, self)
 
+Mat$col <- function(column) .Call(wrap__Mat__col, self, column)
+
 Mat$save <- function(file) .Call(wrap__Mat__save, self, file)
 
 Mat$combine_columns <- function(data) .Call(wrap__Mat__combine_columns, self, data)
@@ -283,6 +294,10 @@ Mat$max_column_sum <- function(value) .Call(wrap__Mat__max_column_sum, self, val
 Mat$min_row_sum <- function(value) .Call(wrap__Mat__min_row_sum, self, value)
 
 Mat$max_row_sum <- function(value) .Call(wrap__Mat__max_row_sum, self, value)
+
+Mat$rename_column <- function(old, new) .Call(wrap__Mat__rename_column, self, old, new)
+
+Mat$rename_column_if_exists <- function(old, new) .Call(wrap__Mat__rename_column_if_exists, self, old, new)
 
 #' @rdname Mat
 #' @usage NULL

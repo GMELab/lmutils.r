@@ -72,16 +72,16 @@ pub fn parallelize<T, R>(
 
 pub fn init() {
     INIT.call_once(|| {
-        tracing_subscriber::fmt()
+        let _ = tracing_subscriber::fmt()
             .with_env_filter(
                 tracing_subscriber::EnvFilter::builder()
                     .with_default_directive(tracing::Level::INFO.into())
                     .with_env_var("LMUTILS_LOG")
                     .from_env_lossy(),
             )
-            .init();
+            .try_init();
 
-        rayon::ThreadPoolBuilder::new()
+        let _ = rayon::ThreadPoolBuilder::new()
             .num_threads(
                 std::env::var("LMUTILS_NUM_WORKER_THREADS")
                     .map(|s| {
@@ -91,8 +91,7 @@ pub fn init() {
                     .unwrap_or_else(|_| num_cpus::get() / 2)
                     .clamp(1, num_cpus::get()),
             )
-            .build_global()
-            .unwrap();
+            .build_global();
     });
 }
 
