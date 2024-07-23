@@ -721,3 +721,4 @@ lmutils::df_split(
 - `LMUTILS_LOG`/`lmutils::set_log_level` to set the log level (default: `info`). Available log levels in order of increasing verbosity are `off`, `error`, `warn`, `info`, `debug`, and `trace`.
 - `LMUTILS_CORE_PARALLELISM`/`lmutils::set_core_parallelism` to set the core parallelism (default: `16`). This is the number of primary operations to run in parallel.
 - `LMUTILS_NUM_WORKER_THREADS`/`lmutils::set_num_worker_threads` to set the number of worker threads to use (default: `num_cpus::get() / 2`). This is the number of threads to use for parallel operations. Once an operation has been run, this value cannot be changed.
+- `LMUTILS_DISABLE_PREDICTED`/`lmutils::disabled_predicted`/`lmutils::enable_predicted` to disable the calculation of the predicted values in `lmutils::calculate_r2`.

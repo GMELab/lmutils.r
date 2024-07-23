@@ -1120,6 +1120,20 @@ pub fn set_num_worker_threads(num: u32) {
     std::env::set_var("LMUTILS_NUM_WORKER_THREADS", num.to_string());
 }
 
+/// Disable the calculation of predicted values in `calculate_r2`.
+/// @export
+#[extendr]
+pub fn disable_predicted() {
+    std::env::set_var("LMUTILS_DISABLE_PREDICTED", "1");
+}
+
+/// Enable the calculation of predicted values in `calculate_r2`.
+/// @export
+#[extendr]
+pub fn enable_predicted() {
+    std::env::remove_var("LMUTILS_DISABLE_PREDICTED");
+}
+
 // END CONFIG FUNCTIONS
 
 // INTERNAL FUNCTIONS
@@ -1323,6 +1337,8 @@ extendr_module! {
     fn set_log_level;
     fn set_core_parallelism;
     fn set_num_worker_threads;
+    fn disable_predicted;
+    fn enable_predicted;
 
     fn internal_lmutils_fd_into_file;
     fn internal_lmutils_file_into_fd;
