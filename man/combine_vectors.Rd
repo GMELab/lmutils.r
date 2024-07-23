@@ -4,12 +4,12 @@
 \alias{combine_vectors}
 \title{Combine a list of double vectors into a matrix.
 \code{data} is a list of double vectors.
-\code{out} is a file name to write the matrix to or \code{NULL} to return the matrix.}
+\code{out} is an output file name or \code{NULL} to return the matrix.}
 \usage{
 combine_vectors(data, out)
 }
 \description{
 Combine a list of double vectors into a matrix.
 \code{data} is a list of double vectors.
-\code{out} is a file name to write the matrix to or \code{NULL} to return the matrix.
+\code{out} is an output file name or \code{NULL} to return the matrix.
 }

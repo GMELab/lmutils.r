@@ -5,8 +5,8 @@
 \title{Compute a new column for a data frame from a regex and an existing column.
 \code{df} is a data frame.
 \code{column} is the column to match.
-\code{regex} is the regex to match, the first capture group is used.
-\code{new_column} is the new column to create.
+\code{regex} is the regex to match. The first capture group is used.
+\code{new_column} is the new column name.
 This function uses the Rust flavor of regex, see https://docs.rs/regex/latest/regex/#syntax for more /* information */.}
 \usage{
 new_column_from_regex(df, column, regex, new_column)
@@ -15,7 +15,7 @@ new_column_from_regex(df, column, regex, new_column)
 Compute a new column for a data frame from a regex and an existing column.
 \code{df} is a data frame.
 \code{column} is the column to match.
-\code{regex} is the regex to match, the first capture group is used.
-\code{new_column} is the new column to create.
+\code{regex} is the regex to match. The first capture group is used.
+\code{new_column} is the new column name.
 This function uses the Rust flavor of regex, see https://docs.rs/regex/latest/regex/#syntax for more /* information */.
 }

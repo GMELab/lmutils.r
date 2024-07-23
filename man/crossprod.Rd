@@ -3,15 +3,13 @@
 \name{crossprod}
 \alias{crossprod}
 \title{Computes the cross product of the matrix. Equivalent to \code{t(data) \%*\% data}.
-\code{data} must be a string file name or a matrix.
-\code{out} is the name of the file to save to.
-If \code{out} is \code{NULL}, the cross product is returned otherwise \code{NULL}.}
+\code{data} is a list of matrix convertable objects.
+\code{out} is a standard output file.}
 \usage{
 crossprod(data, out)
 }
 \description{
 Computes the cross product of the matrix. Equivalent to \code{t(data) \%*\% data}.
-\code{data} must be a string file name or a matrix.
-\code{out} is the name of the file to save to.
-If \code{out} is \code{NULL}, the cross product is returned otherwise \code{NULL}.
+\code{data} is a list of matrix convertable objects.
+\code{out} is a standard output file.
 }

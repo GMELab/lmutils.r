@@ -2,7 +2,8 @@
 % Please edit documentation in R/extendr-wrappers.R
 \name{to_matrix}
 \alias{to_matrix}
-\title{Convert a data frame to a file.
+\title{DEPRECATED
+Convert a data frame to a file.
 \code{df} must be a numeric data frame, numeric matrix, or a string RData file name.
 \code{out} is the name of the file to save to.
 If \code{out} is \code{NULL}, the matrix is returned otherwise \code{NULL}.}
@@ -10,6 +11,7 @@ If \code{out} is \code{NULL}, the matrix is returned otherwise \code{NULL}.}
 to_matrix(df, out)
 }
 \description{
+DEPRECATED
 Convert a data frame to a file.
 \code{df} must be a numeric data frame, numeric matrix, or a string RData file name.
 \code{out} is the name of the file to save to.

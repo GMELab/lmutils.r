@@ -2,7 +2,8 @@
 % Please edit documentation in R/extendr-wrappers.R
 \name{combine_matrices}
 \alias{combine_matrices}
-\title{Combine matrices into a single matrix by columns.
+\title{DEPRECATED
+Combine matrices into a single matrix by columns.
 \code{data} is a character vector of file names or a list of matrices.
 \code{out} is a file name to write the combined matrix to.
 If \code{out} is \code{NULL}, the combined matrix is returned otherwise \code{NULL}.}
@@ -10,6 +11,7 @@ If \code{out} is \code{NULL}, the combined matrix is returned otherwise \code{NU
 combine_matrices(data, out)
 }
 \description{
+DEPRECATED
 Combine matrices into a single matrix by columns.
 \code{data} is a character vector of file names or a list of matrices.
 \code{out} is a file name to write the combined matrix to.

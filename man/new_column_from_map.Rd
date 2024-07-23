@@ -2,18 +2,16 @@
 % Please edit documentation in R/extendr-wrappers.R
 \name{new_column_from_map}
 \alias{new_column_from_map}
-\title{Add a new column to a data frame from a list of values, matching by the names of the values.
-\code{df} is a data frame.
+\title{Compute a new column for a data frame from a list of values and an existing column, matching by the names of the values.
 \code{column} is the column to match.
-\code{values} is a list of values (a map like from \code{lmutils::map_from_pairs})
-\code{new_column} is the new column to create.}
+\code{values} is a named list of values.
+\code{new_column} is the new column name.}
 \usage{
 new_column_from_map(df, column, values, new_column)
 }
 \description{
-Add a new column to a data frame from a list of values, matching by the names of the values.
-\code{df} is a data frame.
+Compute a new column for a data frame from a list of values and an existing column, matching by the names of the values.
 \code{column} is the column to match.
-\code{values} is a list of values (a map like from \code{lmutils::map_from_pairs})
-\code{new_column} is the new column to create.
+\code{values} is a named list of values.
+\code{new_column} is the new column name.
 }

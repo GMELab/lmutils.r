@@ -1,353 +1,461 @@
+#![allow(non_snake_case)]
+#![allow(deprecated)]
+mod utils;
+
 use core::panic;
 use std::{
     cmp::Ordering,
     collections::{HashMap, HashSet},
-    io::Read,
     mem::MaybeUninit,
-    path::{Path, PathBuf},
-    process::Command,
+    path::Path,
     str::FromStr,
-    sync::Mutex,
 };
 
-use extendr_api::{io::Load, prelude::*, AsTypedSlice, Deref, DerefMut};
-use lmutils::{File, IntoMatrix, Matrix, OwnedMatrix, ToRMatrix, Transform};
-use rayon::{
-    iter::{
-        IndexedParallelIterator, IntoParallelIterator, IntoParallelRefIterator,
-        IntoParallelRefMutIterator, ParallelIterator,
-    },
-    slice::{ParallelSlice, ParallelSliceMut},
+pub use crate::utils::{
+    from_to_file, get_core_parallelism, init, list_files, matrix, maybe_mutating_return,
+    maybe_return_vec, named_matrix_list, parallelize, Mat, Par,
 };
-use tracing::{debug, error, info};
+use extendr_api::{prelude::*, AsTypedSlice};
+use lmutils::{File, IntoMatrix, Join, Matrix, OwnedMatrix};
+use rayon::{prelude::*, slice::ParallelSliceMut};
+use tracing::{debug, info};
+use utils::{matrix_list, maybe_return_paired};
 
-struct RobjPar(pub Robj);
+// MATRIX OBJECT
+type Ptr = ExternalPtr<utils::Mat>;
 
-impl From<RobjPar> for Robj {
-    fn from(obj: RobjPar) -> Self {
-        obj.0
-    }
-}
-
-impl From<Robj> for RobjPar {
-    fn from(obj: Robj) -> Self {
-        RobjPar(obj)
-    }
-}
-
-impl Deref for RobjPar {
-    type Target = Robj;
-
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
-}
-
-impl DerefMut for RobjPar {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.0
-    }
-}
-
-unsafe impl Send for RobjPar {}
-
-fn init() {
-    let _ = tracing_subscriber::fmt()
-        .with_env_filter(
-            tracing_subscriber::EnvFilter::builder()
-                .with_default_directive(tracing::Level::INFO.into())
-                .with_env_var("LMUTILS_LOG")
-                .from_env_lossy(),
-        )
-        .try_init();
-
-    let _ = rayon::ThreadPoolBuilder::new()
-        .num_threads(
-            std::env::var("LMUTILS_NUM_WORKER_THREADS")
-                .map(|s| {
-                    s.parse()
-                        .expect("LMUTILS_NUM_WORKER_THREADS is not a number")
-                })
-                .unwrap_or_else(|_| num_cpus::get() / 2)
-                .clamp(1, num_cpus::get()),
-        )
-        .build_global();
-}
-
-fn get_num_main_threads() -> usize {
-    std::env::var("LMUTILS_NUM_MAIN_THREADS")
-        .map(|s| s.parse().expect("LMUTILS_NUM_MAIN_THREADS is not a number"))
-        .unwrap_or(16)
-        .clamp(1, num_cpus::get())
-}
-
-fn rmatrix(data: Robj) -> Result<Matrix<'static>> {
-    let float = RMatrix::<f64>::try_from(data);
-    match float {
-        Ok(float) => Ok(float.into()),
-        Err(Error::TypeMismatch(data)) => Ok(RMatrix::<i32>::try_from(data)?.into_matrix()),
-        Err(e) => Err(e),
-    }
-}
-
-fn file_or_matrix(data: Robj) -> Result<lmutils::Matrix<'static>> {
-    init();
-
-    if data.is_string() {
-        Ok(lmutils::File::from_str(data.as_str().expect("data is a string"))?.into())
-    } else if data.is_matrix() {
-        Ok(RMatrix::<f64>::try_from(data)
-            .expect("data is a matrix")
-            .into())
-    } else if data.is_list() {
-        Ok(R!("as.matrix(sapply({{data}}, as.double))")?
-            .as_matrix::<f64>()
-            .unwrap()
-            .into_matrix())
-    } else if data.is_integer() {
-        let v = data
-            .as_integer_slice()
-            .expect("data is an integer vector")
-            .iter()
-            .map(|i| *i as f64)
-            .collect::<Vec<_>>();
-        Ok(Matrix::Owned(OwnedMatrix::new(v.len(), 1, v, None)))
-    } else if data.is_real() {
-        let v = data.as_real_vector().expect("data is a real vector");
-        Ok(Matrix::Owned(OwnedMatrix::new(v.len(), 1, v, None)))
-    } else {
-        Err(MUST_BE_FILE_NAME_OR_MATRIX.into())
-    }
-}
-
-fn file_or_matrix_list(data: Robj) -> Result<Vec<(String, lmutils::Matrix<'static>)>> {
-    if data.is_list() {
-        let data = data.as_list().expect("data is a list");
-        if data.len() == 0 {
-            return Err(CALCULATE_R2_DATA_MUST_BE.into());
-        }
-        if data
-            .class()
-            .map(|x| x.into_iter().any(|c| c == "data.frame"))
-            .unwrap_or(false)
-        {
-            return Ok(vec![(
-                "1".to_string(),
-                R!("as.matrix(sapply({{data}}, as.double))")?
-                    .as_matrix::<f64>()
-                    .unwrap()
-                    .into_matrix(),
-            )]);
-        }
-        let mut i = 1;
-        let r: Result<Vec<Vec<(String, Matrix<'static>)>>> = data
-            .into_iter()
-            .map(|(x, r)| {
-                let r: Result<(String, Matrix<'static>)> = if r.is_matrix() {
-                    Ok((
-                        if x.is_empty() || x == "NA" {
-                            (i + 1).to_string()
-                        } else {
-                            x.to_string()
-                        },
-                        rmatrix(r)?,
-                        // RMatrix::<f64>::try_from(r).expect("i is a matrix").into(),
-                    ))
-                } else if r.is_string() {
-                    Ok((
-                        r.as_str().unwrap().to_string(),
-                        lmutils::File::from_str(r.as_str().expect("i is a string"))?.into(),
-                    ))
-                } else if r.is_integer() {
-                    let v = r
-                        .as_integer_slice()
-                        .expect("data is an integer vector")
-                        .iter()
-                        .map(|i| *i as f64)
-                        .collect::<Vec<_>>();
-                    Ok((
-                        if x.is_empty() || x == "NA" {
-                            (i + 1).to_string()
-                        } else {
-                            x.to_string()
-                        },
-                        Matrix::Owned(OwnedMatrix::new(v.len(), 1, v, None)),
-                    ))
-                } else if r.is_real() {
-                    let v = r.as_real_vector().expect("data is a real vector");
-                    Ok((
-                        if x.is_empty() || x == "NA" {
-                            (i + 1).to_string()
-                        } else {
-                            x.to_string()
-                        },
-                        Matrix::Owned(OwnedMatrix::new(v.len(), 1, v, None)),
-                    ))
-                } else if r.is_list() {
-                    if r.class()
-                        .map(|x| x.into_iter().any(|c| c == "data.frame"))
-                        .unwrap_or(false)
-                    {
-                        Ok((
-                            (i + 1).to_string(),
-                            R!("as.matrix(sapply({{r}}, as.double))")?
-                                .as_matrix::<f64>()
-                                .unwrap()
-                                .into_matrix(),
-                        ))
-                    } else {
-                        let r = file_or_matrix_list(r)?
-                            .into_iter()
-                            .enumerate()
-                            .map(|(j, (x, r))| {
-                                if x.parse::<usize>().is_ok() {
-                                    ((i + j).to_string(), r)
-                                } else {
-                                    (x, r)
-                                }
-                            })
-                            .collect::<Vec<_>>();
-                        i += r.len();
-                        return Ok(r);
-                    }
-                } else {
-                    return Err(CALCULATE_R2_DATA_MUST_BE.into());
-                };
-                i += 1;
-                Ok(vec![r?])
-            })
-            .collect();
-        Ok(r?.into_iter().flatten().collect())
-    } else if data.is_string() {
-        let data = data.as_str_vector().expect("data is a string vector");
-        data.into_iter()
-            .map(|i| Ok((i.to_string(), lmutils::File::from_str(i)?.into())))
-            .collect()
-    } else if data.is_matrix() {
-        let data = (
-            "1".to_string(),
-            RMatrix::<f64>::try_from(data)
-                .expect("data is a matrix")
-                .into(),
-        );
-        Ok(vec![data])
-    } else if data.is_integer() {
-        let v = data
-            .as_integer_slice()
-            .expect("data is an integer vector")
-            .iter()
-            .map(|i| *i as f64)
-            .collect::<Vec<_>>();
-        Ok(vec![(
-            "1".to_string(),
-            Matrix::Owned(OwnedMatrix::new(v.len(), 1, v, None)),
-        )])
-    } else if data.is_real() {
-        let v = data.as_real_vector().expect("data is a real vector");
-        Ok(vec![(
-            "1".to_string(),
-            Matrix::Owned(OwnedMatrix::new(v.len(), 1, v, None)),
-        )])
-    } else {
-        Err(CALCULATE_R2_DATA_MUST_BE.into())
-    }
-}
-
-#[allow(dead_code)]
-fn maybe_mutating_return(
-    mut data: Matrix<'static>,
-    out: Nullable<Robj>,
-    f: impl FnOnce(Matrix<'static>) -> Result<Matrix<'static>>,
-) -> Result<Robj> {
-    if let NotNull(ref out) = out {
-        if out.is_string() {
-            data.into_owned()?;
-        } else if out.is_logical() {
-            if out.as_logical().unwrap().is_true() {
-                data.into_owned()?;
-            }
-        } else {
-            return Err("out must be a string or a logical".into());
-        }
-    }
-    let mat = f(data)?;
-    if let NotNull(out) = out {
-        if out.is_string() {
-            File::from_str(out.as_str().unwrap())?.write_matrix(&mat.to_owned()?)?;
-        } else if out.is_logical() && out.as_logical().unwrap().is_true() {
-            return Ok(mat.into_robj()?);
-        }
-    }
-    Ok(().into())
-}
-
-fn list_files(dir: &Path) -> std::io::Result<Vec<PathBuf>> {
-    Ok(std::fs::read_dir(dir)?
-        .flat_map(|entry| {
-            entry.map(|entry| entry.path()).map(|path| {
-                if path.is_file() {
-                    Ok(vec![path])
-                } else {
-                    list_files(&path)
-                }
-            })
-        })
-        .collect::<std::io::Result<Vec<_>>>()?
-        .into_iter()
-        .flatten()
-        .collect::<Vec<_>>())
-}
-
-/// Convert files from one format to another.
-/// `from` and `to` must be character vectors of the same length.
+/// `lmutils::Mat` objects are a way to store matrices in memory and perform operations on them. They can be used to store operations or chain operations together for later execution. This can be useful if, for example, you wish to a hundred large matrices from files and standardize them all before using `lmutils::calculate_r2`. Using `Mat` objects, you can store the operations you wish to perform and `Mat` will execute them only when the matrix is loaded.
 /// @export
 #[extendr]
-pub fn convert_file(from: &[Rstr], to: &[Rstr]) -> Result<()> {
-    init();
+impl Mat {
+    /// Create a new matrix object from a matrix convertable object.
+    /// `data` is a matrix convertable object.
+    /// @export
+    pub fn new(data: Robj) -> Result<Self> {
+        Ok(Self::Own(lmutils::Matrix::from_robj(data)?))
+    }
+
+    /// Load this matrix into an R matrix.
+    /// @export
+    pub fn r(&mut self) -> Result<RMatrix<f64>> {
+        Ok(self.to_rmatrix()?)
+    }
+
+    /// Loads the matrix and gets a column by name or index.
+    /// `column` is the name or index of the column to get.
+    /// @export
+    pub fn col(&mut self, column: Robj) -> Result<Robj> {
+        let column = if column.is_integer() {
+            column.as_integer().unwrap() as usize - 1
+        } else if column.is_string() {
+            let column = column.as_str().unwrap();
+            self.column_index(column)?
+        } else {
+            return Err("column must be a string or integer".into());
+        };
+        let mat: &mut lmutils::Matrix = &mut *self;
+        Ok(mat
+            .col(column)?
+            .map(|x| x.to_vec().into_robj())
+            .unwrap_or(().into()))
+    }
+
+    /// Save this matrix to a file.
+    /// `file` is the name of the file to save to.
+    /// @export
+    pub fn save(&mut self, file: &str) -> Result<()> {
+        Ok(File::from_str(file)?.write(self)?)
+    }
+
+    /// Combine this matrix with other matrices by columns. (`cbind`)
+    /// `data` is a list of matrix convertable objects.
+    /// @export
+    pub fn combine_columns(&mut self, data: Robj) -> Result<Ptr> {
+        self.t_combine_columns(matrix_list(data)?);
+        Ok(self.ptr())
+    }
+
+    /// Combine this matrix with other matrices by rows. (`rbind`)
+    /// `data` is a list of matrix convertable objects.
+    /// @export
+    pub fn combine_rows(&mut self, data: Robj) -> Result<Ptr> {
+        self.t_combine_rows(matrix_list(data)?);
+        Ok(self.ptr())
+    }
+
+    /// Remove columns from this matrix.
+    /// `columns` is a numeric vector of column indices to remove (1-based).
+    /// @export
+    pub fn remove_columns(&mut self, columns: Robj) -> Result<Ptr> {
+        let columns = if columns.is_integer() {
+            columns
+                .as_integer_slice()
+                .unwrap()
+                .iter()
+                .map(|x| *x as usize - 1)
+                .collect::<HashSet<_>>()
+        } else if columns.is_real() {
+            columns
+                .as_real_slice()
+                .unwrap()
+                .iter()
+                .map(|x| *x as usize - 1)
+                .collect::<HashSet<_>>()
+        } else {
+            return Err("columns must be an integer vector".into());
+        };
+        self.t_remove_columns(columns);
+        Ok(self.ptr())
+    }
+
+    /// Remove a column from this matrix by name.
+    /// `column` is the name of the column to remove.
+    /// @export
+    pub fn remove_column(&mut self, column: &str) -> Result<Ptr> {
+        self.t_remove_column_by_name(column);
+        Ok(self.ptr())
+    }
+
+    /// Remove a column from this matrix by name if it exists.
+    /// `column` is the name of the column to remove.
+    /// @export
+    pub fn remove_column_if_exists(&mut self, column: &str) -> Result<Ptr> {
+        self.t_remove_column_by_name_if_exists(column);
+        Ok(self.ptr())
+    }
+
+    /// Remove rows from this matrix.
+    /// `rows` is a numeric vector of row indices to remove (1-based).
+    /// @export
+    pub fn remove_rows(&mut self, rows: Robj) -> Result<Ptr> {
+        let rows = if rows.is_integer() {
+            rows.as_integer_slice()
+                .unwrap()
+                .iter()
+                .map(|x| *x as usize - 1)
+                .collect::<HashSet<_>>()
+        } else if rows.is_real() {
+            rows.as_real_slice()
+                .unwrap()
+                .iter()
+                .map(|x| *x as usize - 1)
+                .collect::<HashSet<_>>()
+        } else {
+            return Err("rows must be an integer vector".into());
+        };
+        self.t_remove_rows(rows);
+        Ok(self.ptr())
+    }
+
+    /// Transpose this matrix.
+    /// @export
+    pub fn transpose(&mut self) -> Result<Ptr> {
+        self.t_transpose();
+        Ok(self.ptr())
+    }
+
+    /// Sort this matrix by the column at the given index.
+    /// `by` is the index of the column to sort by (1-based).
+    /// @export
+    pub fn sort(&mut self, by: u32) -> Result<Ptr> {
+        self.t_sort_by_column(by as usize - 1);
+        Ok(self.ptr())
+    }
+
+    /// Sort this matrix by the column with the given name.
+    /// `by` is the name of the column to sort by.
+    /// @export
+    pub fn sort_by_name(&mut self, by: &str) -> Result<Ptr> {
+        self.t_sort_by_column_name(by);
+        Ok(self.ptr())
+    }
+
+    /// Sort this matrix by the given order of rows.
+    /// `order` is a numeric vector of row indices (1-based).
+    /// @export
+    pub fn sort_by_order(&mut self, order: Robj) -> Result<Ptr> {
+        let order = if order.is_integer() {
+            order
+                .as_integer_slice()
+                .unwrap()
+                .iter()
+                .map(|x| *x as usize - 1)
+                .collect::<Vec<_>>()
+        } else if order.is_real() {
+            order
+                .as_real_slice()
+                .unwrap()
+                .iter()
+                .map(|x| *x as usize - 1)
+                .collect::<Vec<_>>()
+        } else {
+            return Err("order must be an integer vector".into());
+        };
+        self.t_sort_by_order(order);
+        Ok(self.ptr())
+    }
+
+    /// Deduplicate this matrix by a column at the given index. The first occurrence of each value is kept.
+    /// `by` is the index of the column to deduplicate by (1-based).
+    /// @export
+    pub fn dedup(&mut self, by: u32) -> Result<Ptr> {
+        self.t_dedup_by_column(by as usize - 1);
+        Ok(self.ptr())
+    }
+
+    /// Deduplicate this matrix by a column with the given name. The first occurrence of each value
+    /// is kept.
+    /// `by` is the name of the column to deduplicate by.
+    /// @export
+    pub fn dedup_by_name(&mut self, by: &str) -> Result<Ptr> {
+        self.t_dedup_by_column_name(by);
+        Ok(self.ptr())
+    }
+
+    /// Match the rows of this matrix to the values in a vector by a column at the given index.
+    /// `with` is a numeric vector.
+    /// `by` is the index of the column to match by (1-based).
+    /// `join` is the type of join to perform. 0 is inner, 1 is left, and 2 is right. If a row is not matched for a left or right join, it will error.
+    /// @export
+    pub fn match_to(&mut self, with: Robj, by: u32, join: Join) -> Result<Ptr> {
+        let with = if with.is_integer() {
+            with.as_integer_slice()
+                .unwrap()
+                .iter()
+                .map(|x| *x as f64)
+                .collect::<Vec<_>>()
+        } else if with.is_real() {
+            with.as_real_vector().unwrap()
+        } else {
+            return Err("with must be an integer vector".into());
+        };
+        self.t_match_to(with, by as usize - 1, join);
+        Ok(self.ptr())
+    }
+
+    /// Match the rows of this matrix to the values in a vector by a column with the given name.
+    /// `with` is a numeric vector.
+    /// `by` is the name of the column to match by.
+    /// `join` is the type of join to perform. 0 is inner, 1 is left, and 2 is right. If a row is not matched for a left or right join, it will error.
+    /// @export
+    pub fn match_to_by_name(&mut self, with: Robj, by: &str, join: Join) -> Result<Ptr> {
+        let with = if with.is_integer() {
+            with.as_integer_slice()
+                .unwrap()
+                .iter()
+                .map(|x| *x as f64)
+                .collect::<Vec<_>>()
+        } else if with.is_real() {
+            with.as_real_vector().unwrap()
+        } else {
+            return Err("with must be an integer vector".into());
+        };
+        self.t_match_to_by_column_name(with, by, join);
+        Ok(self.ptr())
+    }
+
+    /// Joins this matrix with another matrix by a column at the given index.
+    /// `other` is the matrix to join with.
+    /// `self_by` is the index of the column to join by in this matrix (1-based).
+    /// `other_by` is the index of the column to join by in the other matrix (1-based).
+    /// `join` is the type of join to perform. 0 is inner, 1 is left, and 2 is right. If a row is not matched for a left or right join, it will error.
+    /// @export
+    pub fn join(&mut self, other: Robj, self_by: u32, other_by: u32, join: Join) -> Result<Ptr> {
+        let other = matrix(other)?;
+        self.t_join(other, self_by as usize - 1, other_by as usize - 1, join);
+        Ok(self.ptr())
+    }
+
+    /// Joins this matrix with another matrix by a column with the given name.
+    /// `other` is the matrix to join with.
+    /// `by` is the name of the column to join the matrices by.
+    /// `join` is the type of join to perform. 0 is inner, 1 is left, and 2 is right. If a row is not matched for a left or right join, it will error.
+    /// @export
+    pub fn join_by_name(&mut self, other: Robj, by: &str, join: Join) -> Result<Ptr> {
+        let other = matrix(other)?;
+        self.t_join_by_column_name(other, by, join);
+        Ok(self.ptr())
+    }
+
+    /// Standardizes this matrix so that each column has a mean of 0 and a standard deviation of 1.
+    /// @export
+    pub fn standardize_columns(&mut self) -> Result<Ptr> {
+        self.t_standardize_columns();
+        Ok(self.ptr())
+    }
+
+    /// Standardizes this matrix so that each row has a mean of 0 and a standard deviation of 1.
+    /// @export
+    pub fn standardize_rows(&mut self) -> Result<Ptr> {
+        self.t_standardize_rows();
+        Ok(self.ptr())
+    }
+
+    /// Remove rows from this matrix that containing any NA values.
+    /// @export
+    pub fn remove_na_rows(&mut self) -> Result<Ptr> {
+        self.t_remove_nan_rows();
+        Ok(self.ptr())
+    }
+
+    /// Remove columns from this matrix that containing any NA values.
+    /// @export
+    pub fn remove_na_columns(&mut self) -> Result<Ptr> {
+        self.t_remove_nan_columns();
+        Ok(self.ptr())
+    }
+
+    /// Replace all NA values in this matrix with the given value.
+    /// `value` is the value to replace NA values with.
+    /// @export
+    pub fn na_to_value(&mut self, value: Robj) -> Result<Ptr> {
+        let value = if value.is_integer() {
+            value.as_integer().unwrap() as f64
+        } else if value.is_real() {
+            value.as_real().unwrap()
+        } else {
+            return Err("value must be a numeric scalar".into());
+        };
+        self.t_nan_to_value(value);
+        Ok(self.ptr())
+    }
+
+    /// Replace all NA values in this matrix with the mean of the column.
+    /// @export
+    pub fn na_to_column_mean(&mut self) -> Result<Ptr> {
+        self.t_nan_to_column_mean();
+        Ok(self.ptr())
+    }
+
+    /// Replace all NA values in this matrix with the mean of the row.
+    /// @export
+    pub fn na_to_row_mean(&mut self) -> Result<Ptr> {
+        self.t_nan_to_row_mean();
+        Ok(self.ptr())
+    }
+
+    /// Remove all columns from this matrix whose sum is less than the given value.
+    /// `value` is the minimum sum a column must have to be kept.
+    /// @export
+    pub fn min_column_sum(&mut self, value: f64) -> Result<Ptr> {
+        self.t_min_column_sum(value);
+        Ok(self.ptr())
+    }
+
+    /// Remove all columns from this matrix whose sum is greater than the given value.
+    /// `value` is the maximum sum a column must have to be kept.
+    /// @export
+    pub fn max_column_sum(&mut self, value: f64) -> Result<Ptr> {
+        self.t_max_column_sum(value);
+        Ok(self.ptr())
+    }
+
+    /// Remove all rows from this matrix whose sum is less than the given value.
+    /// `value` is the minimum sum a row must have to be kept.
+    /// @export
+    pub fn min_row_sum(&mut self, value: f64) -> Result<Ptr> {
+        self.t_min_row_sum(value);
+        Ok(self.ptr())
+    }
+
+    /// Remove all rows from this matrix whose sum is greater than the given value.
+    /// `value` is the maximum sum a row must have to be kept.
+    /// @export
+    pub fn max_row_sum(&mut self, value: f64) -> Result<Ptr> {
+        self.t_max_row_sum(value);
+        Ok(self.ptr())
+    }
+
+    /// Rename a column in this matrix.
+    /// `old` is the name of the column to rename.
+    /// `new` is the new name of the column.
+    /// @export
+    pub fn rename_column(&mut self, old: &str, new: &str) -> Result<Ptr> {
+        self.t_rename_column(old, new);
+        Ok(self.ptr())
+    }
+
+    /// Rename a column in this matrix if it exists.
+    /// `old` is the name of the column to rename.
+    /// `new` is the new name of the column.
+    /// @export
+    pub fn rename_column_if_exists(&mut self, old: &str, new: &str) -> Result<Ptr> {
+        self.t_rename_column_if_exists(old, new);
+        Ok(self.ptr())
+    }
+}
+
+// END MATRIX OBJECT
+
+// MATRIX FUNCTIONS
+
+/// Saves a list of matrix convertible objects to a character vector of file names.
+/// `from` is a list of matrix convertable objects.
+/// `to` is a character vector of file names to write to.
+/// @export
+#[extendr]
+pub fn save(from: Robj, to: &[Rstr]) -> Result<()> {
+    let mut from = named_matrix_list(from)?;
+    let to = to.iter().map(|x| x.as_str()).collect::<Vec<_>>();
+    let to = to
+        .into_iter()
+        .map(lmutils::File::from_str)
+        .collect::<std::result::Result<Vec<lmutils::File>, lmutils::Error>>()?;
 
     if from.len() != to.len() {
         return Err("from and to must be the same length".into());
     }
 
-    for (from, to) in from.iter().zip(to.iter()) {
-        lmutils::convert_file(from.as_str(), to.as_str(), lmutils::TransitoryType::Float)?;
+    for ((_, from), to) in from.iter_mut().zip(to.iter()) {
+        to.write(from)?;
     }
 
     Ok(())
 }
 
-/// Convert files from one format to another.
-/// `from` and `to` must be character vectors of the same length.
+/// Recursively converts a directory of files to the selected format.
+/// `from` is the directory to read from.
+/// `to` is the directory to write to or `NULL` to write to `from`.
+/// `file_type` is the file extension to write as.
 /// @export
 #[extendr]
-pub fn convert_files(from: &[Rstr], to: &[Rstr], item_type: lmutils::TransitoryType) -> Result<()> {
+pub fn save_dir(from: &str, to: Nullable<&str>, file_type: &str) -> Result<()> {
     init();
 
-    if from.len() != to.len() {
-        return Err("from and to must be the same length".into());
-    }
-
-    for (from, to) in from.iter().zip(to.iter()) {
-        lmutils::convert_file(from.as_str(), to.as_str(), item_type)?;
-    }
+    let to = Path::new(match to {
+        Null => from,
+        NotNull(to) => to,
+    });
+    debug!("converting files from {} to {}", from, to.display());
+    std::fs::create_dir_all(to).unwrap();
+    let files = list_files(Path::new(from)).unwrap();
+    parallelize(files, move |_, file| {
+        let from_file = file.to_str().unwrap();
+        let to_file = from_to_file(from_file, from, to, Some(file_type));
+        debug!("converting {} to {}", from_file, to_file.display());
+        if let Some(dir) = to_file.parent() {
+            std::fs::create_dir_all(dir).map_err(lmutils::Error::Io)?;
+        }
+        File::from_str(to_file.to_str().unwrap())
+            .unwrap()
+            .write(&mut lmutils::Matrix::from_str(from_file)?)
+            .unwrap();
+        info!("converted {} to {}", from_file, to_file.display());
+        Ok(())
+    })?;
 
     Ok(())
 }
 
 /// Calculate R^2 and adjusted R^2 for a block and outcomes.
-/// `data` is a character vector of file names, a list of matrices, or a single matrix.
-/// `outcomes` is a file name or a matrix.
-/// Returns a data frame with columns `r2`, `adj_r2`, `data`, and `outcome`.
+/// `data` is a list of matrix convertable objects.
+/// `outcomes` is a matrix convertable object.
+/// Returns a data frame with columns `r2`, `adj_r2`, `data`, `outcome`, `n`, `m`, and `predicted`.
 /// @export
 #[extendr]
 pub fn calculate_r2(data: Robj, outcomes: Robj) -> Result<Robj> {
-    init();
-
-    debug!("Loading outcomes");
-    let outcomes = file_or_matrix(outcomes)?;
-    debug!("Loading data");
-    let data = file_or_matrix_list(data)?;
-    debug!("Loaded data");
+    let outcomes = matrix(outcomes)?;
+    let data = named_matrix_list(data)?;
     let (data_names, data): (Vec<_>, Vec<_>) = data.into_iter().unzip();
 
     debug!("Calculating R^2");
@@ -359,326 +467,34 @@ pub fn calculate_r2(data: Robj, outcomes: Robj) -> Result<Robj> {
     debug!("Calculated R^2");
     debug!("Results {:?}", res);
     let mut df = data_frame!(
-        r2 = res.iter().map(|r| r.r2()).collect::<Vec<_>>(),
-        adj_r2 = res.iter().map(|r| r.adj_r2()).collect::<Vec<_>>(),
-        data = res.iter().map(|r| r.data()).collect::<Vec<_>>(),
-        outcome = res.iter().map(|r| r.outcome()).collect::<Vec<_>>(),
-        n = res.iter().map(|r| r.n()).collect::<Vec<_>>(),
-        m = res.iter().map(|r| r.m()).collect::<Vec<_>>(),
+        r2 = res.iter().map(|r| r.r2()).collect_robj(),
+        adj_r2 = res.iter().map(|r| r.adj_r2()).collect_robj(),
+        data = res.iter().map(|r| r.data()).collect_robj(),
+        outcome = res.iter().map(|r| r.outcome()).collect_robj(),
+        n = res.iter().map(|r| r.n()).collect_robj(),
+        m = res.iter().map(|r| r.m()).collect_robj(),
         predicted = res.iter().map(|_| 0).collect::<Vec<_>>()
     )
     .as_list()
     .unwrap();
+
+    // due to some weird stuff with the macro, we have to set the last column manually
     let predicted = List::from_values(res.iter().map(|r| r.predicted())).into_robj();
     let ncols = df.len();
     df.set_elt(ncols - 1, predicted).unwrap();
+
     Ok(df.into_robj())
-}
-
-/// Calculate R^2 and adjusted R^2 for ranges of a data matrix and outcomes.
-/// `data` is a string file name or a matrix.
-/// `outcomes` is a string file name or a matrix.
-/// `ranges` is a matrix with 2 columns, the start and end columns to use (inclusive).
-/// Returns a data frame with columns `r2`, `adj_r2`, and `outcome` corresponding to each range.
-/// @export
-#[extendr]
-pub fn calculate_r2_ranges(data: Robj, outcomes: Robj, ranges: RMatrix<u32>) -> Result<Robj> {
-    init();
-
-    let outcomes = file_or_matrix(outcomes)?;
-    let data = file_or_matrix(data)?;
-    if ranges.ncols() != 2 {
-        return Err("ranges must have 2 columns".into());
-    }
-    if ranges.nrows() == 0 {
-        return Err("ranges must have at least 1 row".into());
-    }
-
-    let data = data.transform()?;
-    let data = data.as_mat_ref()?;
-    let data = ranges
-        .data()
-        .par_chunks_exact(2)
-        .map(|i| {
-            let start = i[0] as usize;
-            let end = i[1] as usize;
-            let r = data.get(.., start..=end);
-            Matrix::Ref(unsafe {
-                faer::mat::from_raw_parts_mut(
-                    r.as_ptr() as *mut f64,
-                    r.nrows(),
-                    r.ncols(),
-                    r.row_stride(),
-                    r.col_stride(),
-                )
-            })
-        })
-        .collect::<Vec<_>>();
-    let res = lmutils::calculate_r2s(data, outcomes, None)?;
-
-    let mut df = data_frame!(
-        r2 = res.iter().map(|r| r.r2()).collect::<Vec<_>>(),
-        adj_r2 = res.iter().map(|r| r.adj_r2()).collect::<Vec<_>>(),
-        data = res.iter().map(|r| r.data()).collect::<Vec<_>>(),
-        outcome = res.iter().map(|r| r.outcome()).collect::<Vec<_>>(),
-        n = res.iter().map(|r| r.n()).collect::<Vec<_>>(),
-        m = res.iter().map(|r| r.m()).collect::<Vec<_>>(),
-        predicted = res.iter().map(|_| 0).collect::<Vec<_>>()
-    )
-    .as_list()
-    .unwrap();
-    let predicted = List::from_values(res.iter().map(|r| r.predicted())).into_robj();
-    let ncols = df.len();
-    df.set_elt(ncols - 1, predicted).unwrap();
-    Ok(df.into_robj())
-}
-
-/// Combine matrices into a single matrix by columns.
-/// `data` is a character vector of file names or a list of matrices.
-/// `out` is a file name to write the combined matrix to.
-/// If `out` is `NULL`, the combined matrix is returned otherwise `NULL`.
-/// @export
-#[extendr]
-pub fn combine_matrices(data: Robj, out: Nullable<&str>) -> Result<Nullable<Robj>> {
-    init();
-
-    let out = match out {
-        Null => None,
-        NotNull(out) => Some(lmutils::File::from_str(out)?),
-    };
-    let data = file_or_matrix_list(data)?;
-    let res = if data.len() == 1 {
-        let mut data = data.into_iter();
-        data.next().expect("data has at least 1 element").1
-    } else {
-        let mut data = data.into_iter();
-        let first = data.next().expect("data has at least 1 element").1;
-        first.combine(data.map(|i| i.1).collect())?
-    };
-    if let Some(out) = out {
-        out.write_matrix(&res.to_owned()?)?;
-        Ok(Nullable::Null)
-    } else {
-        Ok(Nullable::NotNull(res.into_robj()?))
-    }
-}
-
-const MUST_BE_FILE_NAME_OR_MATRIX: &str = "must be a string file name or a matrix";
-const CALCULATE_R2_DATA_MUST_BE: &str =
-    "data must be a character vector, a list of matrices, or a single matrix";
-
-/// Remove rows from a matrix.
-/// `data` is a character vector of file names, a list of matrices, or a single matrix.
-/// `rows` is a vector of row indices to remove (1-based).
-/// `out` is a file name to write the matrix with the rows removed to.
-/// If `out` is `NULL`, the matrix with the rows removed is returned otherwise `NULL`.
-/// @export
-#[extendr]
-pub fn remove_rows(data: Robj, rows: &[u32], out: Nullable<&str>) -> Result<Nullable<Robj>> {
-    init();
-
-    let data = file_or_matrix(data)?;
-    let out = match out {
-        Null => None,
-        NotNull(out) => Some(lmutils::File::from_str(out)?),
-    };
-    let res = data.remove_rows(&HashSet::from_iter(rows.iter().map(|i| (i - 1) as usize)))?;
-    if let Some(out) = out {
-        out.write_matrix(&res.to_owned()?)?;
-        Ok(Nullable::Null)
-    } else {
-        Ok(Nullable::NotNull(res.into_robj()?))
-    }
-}
-
-/// Save a matrix to a file.
-/// `mat` must be a double matrix.
-/// `out` is the name of the file to save to.
-/// @export
-#[extendr]
-pub fn save_matrix(mat: RMatrix<f64>, out: &str) -> Result<()> {
-    init();
-
-    Ok(File::from_str(out)?.write_matrix(&Matrix::from(mat).to_owned()?)?)
-}
-
-/// Convert a data frame to a file.
-/// `df` must be a numeric data frame, numeric matrix, or a string RData file name.
-/// `out` is the name of the file to save to.
-/// If `out` is `NULL`, the matrix is returned otherwise `NULL`.
-/// @export
-#[extendr]
-pub fn to_matrix(df: Robj, out: Nullable<&str>) -> Result<Nullable<RMatrix<f64>>> {
-    init();
-
-    if df.is_string() {
-        let mut reader = flate2::read::GzDecoder::new(std::io::BufReader::new(
-            std::fs::File::open(df.as_str().unwrap()).unwrap(),
-        ));
-        let mut buf = [0; 5];
-        reader.read_exact(&mut buf).unwrap();
-        if buf != *b"RDX3\n" {
-            return Err("invalid RData file".into());
-        }
-        let obj = Robj::from_reader(&mut reader, extendr_api::io::PstreamFormat::XdrFormat, None)
-            .unwrap();
-        let obj = obj.as_pairlist().unwrap().into_iter().next().unwrap().1;
-        to_matrix(obj, out)
-    } else {
-        let matrix = R!("as.matrix(sapply({{df}}, as.double))")?
-            .as_matrix()
-            .unwrap();
-        if let NotNull(out) = out {
-            save_matrix(matrix, out)?;
-            Ok(Nullable::Null)
-        } else {
-            Ok(Nullable::NotNull(matrix))
-        }
-    }
-}
-
-/// Computes the cross product of the matrix. Equivalent to `t(data) %*% data`.
-/// `data` must be a string file name or a matrix.
-/// `out` is the name of the file to save to.
-/// If `out` is `NULL`, the cross product is returned otherwise `NULL`.
-/// @export
-#[extendr]
-pub fn crossprod(data: Robj, out: Nullable<&str>) -> Result<Nullable<RMatrix<f64>>> {
-    init();
-
-    let data = file_or_matrix(data)?;
-    let mut mat = lmutils::cross_product(data.as_mat_ref()?);
-    let mat = Matrix::Ref(mat.as_mut()).to_owned()?;
-    if let NotNull(out) = out {
-        File::from_str(out)?.write_matrix(&mat)?;
-        Ok(Nullable::Null)
-    } else {
-        Ok(Nullable::NotNull(mat.to_rmatrix()))
-    }
-}
-
-/// Recursively converts a directory of RData files to matrices.
-/// `from` is the directory to read from.
-/// `to` is the directory to write to.
-/// `file_type` is the file extension to write as.
-/// If `to` is `NULL`, the files are written to `from`.
-/// @export
-#[extendr]
-pub fn to_matrix_dir(from: &str, to: Nullable<&str>, file_type: &str) -> Result<()> {
-    init();
-
-    let to = Path::new(match to {
-        Null => from,
-        NotNull(to) => to,
-    });
-    debug!("converting files from {} to {}", from, to.display());
-    std::fs::create_dir_all(to).unwrap();
-    let files = Mutex::new(list_files(Path::new(from)).unwrap());
-    std::thread::scope(|s| {
-        for _ in 0..get_num_main_threads() {
-            s.spawn(|| loop {
-                let mut guard = files.lock().unwrap();
-                let file = guard.pop();
-                drop(guard);
-                if let Some(file) = file {
-                    let from_file = file.to_str().unwrap();
-                    let to_file = to
-                        .join(
-                            from_file
-                                .strip_prefix(from)
-                                .unwrap()
-                                .trim_matches('/')
-                                .trim_matches('\\'),
-                        )
-                        .with_extension(file_type);
-                    debug!("converting {} to {}", from_file, to_file.display());
-                    std::fs::create_dir_all(to_file.parent().unwrap()).unwrap();
-                    let to_file = to_file.to_str().unwrap();
-                    let output = Command::new("Rscript")
-                        .arg("-e")
-                        .arg(format!(
-                            "lmutils::to_matrix('{}', '{}')",
-                            from_file, to_file
-                        ))
-                        .stdout(std::process::Stdio::piped())
-                        .stderr(std::process::Stdio::piped())
-                        .output()
-                        .expect("failed to execute process");
-                    if output.status.code().is_none() || output.status.code().unwrap() != 0 {
-                        error!("failed to convert {}", from_file);
-                        error!("STDOUT: {}", String::from_utf8_lossy(&output.stdout));
-                        error!("STDERR: {}", String::from_utf8_lossy(&output.stderr));
-                    } else {
-                        info!("converted {} to {}", from_file, to_file)
-                    }
-                } else {
-                    break;
-                }
-            });
-        }
-    });
-
-    Ok(())
-}
-
-/// Standardize a matrix. All NaN values are replaced with the mean of the column and each column is scaled to have a mean of 0 and a standard deviation of 1.
-/// `data` is a string file name or a matrix.
-/// `out` is a file name to write the normalized matrix to or `NULL` to return the normalized
-/// matrix.
-/// @export
-#[extendr]
-pub fn standardize(data: Robj, out: Nullable<&str>) -> Result<Robj> {
-    init();
-
-    let data = file_or_matrix(data)?;
-    let data = data
-        .to_owned()?
-        .into_matrix()
-        .nan_to_mean()
-        .standardization()
-        .transform()?;
-    if let NotNull(out) = out {
-        File::from_str(out)?.write_matrix(&data.to_owned()?)?;
-        Ok(().into())
-    } else {
-        Ok(data.into_robj()?)
-    }
-}
-
-/// Load a matrix from a file.
-/// `file` is the name of the file to load from.
-/// @export
-#[extendr]
-pub fn load_matrix(file: &[Rstr]) -> Result<Robj> {
-    init();
-    let file = file
-        .iter()
-        .map(|f| -> Result<RMatrix<f64>> {
-            Ok(File::from_str(f.as_str())?.read_matrix(true)?.to_rmatrix())
-        })
-        .collect::<Result<Vec<_>>>()?;
-
-    if file.len() == 1 {
-        Ok(file.into_iter().next().unwrap().into_robj())
-    } else {
-        Ok(List::from_values(file).into_robj())
-    }
 }
 
 /// Compute the p value of a linear regression between each pair of columns in two matrices.
-/// `data` is a character vector of file names, a list of matrices, or a single matrix.
-/// `outcomes` is a file name or a matrix.
+/// `data` is a list of matrix convertable objects.
+/// `outcomes` is a matrix convertable object.
 /// Returns a data frame with columns `p`, `data`, `data_column`, and `outcome`.
 /// @export
 #[extendr]
 pub fn column_p_values(data: Robj, outcomes: Robj) -> Result<Robj> {
-    init();
-
-    debug!("Loading outcomes");
-    let outcomes = file_or_matrix(outcomes)?;
-    debug!("Loading data");
-    let data = file_or_matrix_list(data)?;
-    debug!("Loaded data");
+    let outcomes = matrix(outcomes)?;
+    let data = named_matrix_list(data)?;
     let (data_names, data): (Vec<_>, Vec<_>) = data.into_iter().unzip();
 
     debug!("Calculating p values");
@@ -698,25 +514,140 @@ pub fn column_p_values(data: Robj, outcomes: Robj) -> Result<Robj> {
     .into_robj())
 }
 
-/// Match the rows of a matrix to the values in a vector by a column.
-/// `data` is a string file name or a matrix.
-/// `with` is a numeric vector.
-/// `by` is the column to match by.
-/// `out` is a file name to write the matched matrix to or `NULL` to return the matched matrix.
+/// Combine a list of double vectors into a matrix.
+/// `data` is a list of double vectors.
+/// `out` is an output file name or `NULL` to return the matrix.
 /// @export
 #[extendr]
-pub fn match_rows(data: Robj, with: &[f64], by: &str, out: Nullable<&str>) -> Result<Robj> {
-    init();
+pub fn combine_vectors(data: List, out: Nullable<&str>) -> Result<Nullable<RMatrix<f64>>> {
+    let ncols = data.len();
+    let nrows = data
+        .iter()
+        .map(|(_, v)| {
+            v.as_real_slice()
+                .expect("all vectors must be doubles")
+                .len()
+        })
+        .next()
+        .unwrap_or(0);
+    let data = data.iter().map(|(_, v)| Par(v)).collect::<Vec<_>>();
+    let mut mat = vec![MaybeUninit::uninit(); ncols * nrows];
+    mat.par_chunks_exact_mut(nrows)
+        .zip(data.into_par_iter())
+        .for_each(|(data, v)| {
+            let v = v.as_real_slice().expect("all vectors must be doubles");
+            if v.len() != nrows {
+                panic!("all vectors must have the same length");
+            }
+            let v: &[MaybeUninit<f64>] = unsafe { std::mem::transmute(v) };
+            data.copy_from_slice(v);
+        });
 
-    let data = file_or_matrix(data)?;
-    let mut data = data.to_owned()?;
-    data.match_to(with, by);
+    let mut mat = Matrix::Owned(OwnedMatrix::new(
+        nrows,
+        ncols,
+        unsafe {
+            std::mem::transmute::<std::vec::Vec<std::mem::MaybeUninit<f64>>, std::vec::Vec<f64>>(
+                mat,
+            )
+        },
+        None,
+    ));
     if let NotNull(out) = out {
-        File::from_str(out)?.write_matrix(&data)?;
-        Ok(().into())
+        File::from_str(out)?.write(&mut mat)?;
+        Ok(Nullable::Null)
     } else {
-        Ok(data.into_matrix().into_robj()?)
+        Ok(Nullable::NotNull(mat.to_rmatrix()?))
     }
+}
+
+/// Remove rows from a matrix.
+/// `data` is a list of matrix convertable objects.
+/// `rows` is a vector of row indices to remove (1-based).
+/// `out` is a standard output file.
+/// @export
+#[extendr]
+pub fn remove_rows(data: Robj, rows: Robj, out: Robj) -> Result<Robj> {
+    let rows = if rows.is_integer() {
+        rows.as_integer_slice()
+            .unwrap()
+            .iter()
+            .map(|x| *x as usize - 1)
+            .collect::<HashSet<_>>()
+    } else if rows.is_real() {
+        rows.as_real_slice()
+            .unwrap()
+            .iter()
+            .map(|x| *x as usize - 1)
+            .collect::<HashSet<_>>()
+    } else {
+        return Err("rows must be an integer vector".into());
+    };
+    maybe_return_paired(data, out, |mut data| {
+        data.remove_rows(&rows)?;
+        Ok(data)
+    })
+}
+
+/// Computes the cross product of the matrix. Equivalent to `t(data) %*% data`.
+/// `data` is a list of matrix convertable objects.
+/// `out` is a standard output file.
+/// @export
+#[extendr]
+pub fn crossprod(data: Robj, out: Nullable<Robj>) -> Result<Robj> {
+    maybe_mutating_return(data, out, |mut data| {
+        let m = data.as_mat_ref()?;
+        let m = m.transpose() * m;
+        Ok(m.into_matrix())
+    })
+}
+
+/// Multiply two matrices. Equivalent to `a %*% b`.
+/// `a` is a list of matrix convertable objects.
+/// `b` is a list of matrix convertable objects.
+/// `out` is a standard output file.
+/// @export
+#[extendr]
+pub fn mul(a: Robj, b: Robj, out: Nullable<Robj>) -> Result<Robj> {
+    maybe_mutating_return(a, out, |mut a| {
+        let mut b = matrix(b)?;
+        let m = a.as_mat_ref()? * b.as_mat_ref()?;
+        Ok(m.into_matrix())
+    })
+}
+
+/// Load a matrix convertable object into R.
+/// `obj` is a list of matrix convertable objects.
+/// If a single object is provided, the function will return the matrix directly, otherwise it will return a list of matrices.
+/// @export
+#[extendr]
+pub fn load(obj: Robj) -> Result<Robj> {
+    maybe_return_paired(obj, ().into(), Ok)
+}
+
+/// Match the rows of a matrix to the values in a vector by a column.
+/// `data` is a list of matrix convertable objects.
+/// `with` is a numeric vector.
+/// `by` is the column to match by.
+/// `out` is a standard output file.
+/// @export
+#[extendr]
+pub fn match_rows(data: Robj, with: Robj, by: &str, out: Robj) -> Result<Robj> {
+    let with = if with.is_integer() {
+        with.as_integer_slice()
+            .unwrap()
+            .iter()
+            .map(|x| *x as f64)
+            .collect::<Vec<_>>()
+    } else if with.is_real() {
+        with.as_real_vector().unwrap()
+    } else {
+        return Err("with must be an integer vector".into());
+    };
+    maybe_return_paired(data, out, |mut data| {
+        data.match_to_by_column_name(with.as_slice(), by, lmutils::Join::Inner)?;
+        Ok(data)
+    })
 }
 
 /// Recursively matches the rows of a directory of matrices to the values in a vector by a column.
@@ -730,65 +661,53 @@ pub fn match_rows_dir(from: &str, to: &str, with: &[f64], by: &str) -> Result<()
     init();
 
     let to = Path::new(to);
-    let with = with
-        .iter()
-        .map(|x| x.to_string())
-        .collect::<Vec<_>>()
-        .join(",");
-
     debug!("matching files from {} to {}", from, to.display());
     std::fs::create_dir_all(to).unwrap();
-    let files = Mutex::new(list_files(Path::new(from)).unwrap());
-    std::thread::scope(|s| {
-        for _ in 0..get_num_main_threads() {
-            s.spawn(|| loop {
-                let mut guard = files.lock().unwrap();
-                let file = guard.pop();
-                drop(guard);
-                if let Some(file) = file {
-                    let from_file = file.to_str().unwrap();
-                    let to_file = to.join(
-                        from_file
-                            .strip_prefix(from)
-                            .unwrap()
-                            .trim_matches('/')
-                            .trim_matches('\\'),
-                    );
-                    debug!("matching {} as {}", from_file, to_file.display());
-                    std::fs::create_dir_all(to_file.parent().unwrap()).unwrap();
-                    let to_file = to_file.to_str().unwrap();
-                    let output = Command::new("Rscript")
-                        .arg("-e")
-                        .arg(format!(
-                            "lmutils::match_rows('{}', c({}), '{}', '{}')",
-                            from_file, with, by, to_file
-                        ))
-                        .stdout(std::process::Stdio::piped())
-                        .stderr(std::process::Stdio::piped())
-                        .output()
-                        .expect("failed to execute process");
-                    if output.status.code().is_none() || output.status.code().unwrap() != 0 {
-                        error!("failed to match {}", from_file);
-                        error!("STDOUT: {}", String::from_utf8_lossy(&output.stdout));
-                        error!("STDERR: {}", String::from_utf8_lossy(&output.stderr));
-                    } else {
-                        info!("matched {} as {}", from_file, to_file)
-                    }
-                } else {
-                    break;
-                }
-            });
-        }
-    });
+    let files = list_files(Path::new(from)).unwrap();
+    parallelize(files, move |_, file| {
+        let from_file = file.to_str().unwrap();
+        let to_file = from_to_file(from_file, from, to, None);
+        debug!("matching {} as {}", from_file, to_file.display());
+        std::fs::create_dir_all(to_file.parent().unwrap()).unwrap();
+        let to_file = to_file.to_str().unwrap();
+        File::from_str(to_file)
+            .unwrap()
+            .write(
+                lmutils::Matrix::from_str(from_file)?.match_to_by_column_name(
+                    with,
+                    by,
+                    lmutils::Join::Inner,
+                )?,
+            )
+            .unwrap();
+        Ok(())
+    })?;
 
     Ok(())
 }
 
+/// Deduplicate a matrix by a column. The first occurrence of each value is kept.
+/// `data` is a list of matrix convertable objects.
+/// `by` is the column to deduplicate by.
+/// `out` is a standard output file.
+/// @export
+#[extendr]
+pub fn dedup(data: Robj, by: &str, out: Robj) -> Result<Robj> {
+    maybe_return_paired(data, out, |mut data| {
+        data.dedup_by_column_name(by)?;
+        Ok(data)
+    })
+}
+
+// END MATRIX FUNCTIONS
+
+// DATA FRAME FUNCTIONS
+
 /// Compute a new column for a data frame from a regex and an existing column.
 /// `df` is a data frame.
 /// `column` is the column to match.
-/// `regex` is the regex to match, the first capture group is used.
-/// `new_column` is the new column to create.
+/// `regex` is the regex to match. The first capture group is used.
+/// `new_column` is the new column name.
 /// This function uses the Rust flavor of regex, see https://docs.rs/regex/latest/regex/#syntax for more /* information */.
 /// @export
 #[extendr]
@@ -824,10 +743,9 @@ pub fn new_column_from_regex(
     R!("as.data.frame({{l}})")
 }
 
-/// Converts two character vectors to a list with the first vector as the names and the second as the values,
-/// only keeping the first occurrence of each name. Essentially creates a hash map.
+/// Converts two character vectors into a named list, where the first vector is the names and the second vector is the values. Only the first occurrence of each name is used, essentially creating a map.
 /// `names` is a character vector of names.
-/// `values` is a list of values.
+/// `values` is a character vector of values.
 /// @export
 #[extendr]
 pub fn map_from_pairs(names: &[Rstr], values: &[Rstr]) -> Result<Robj> {
@@ -861,11 +779,10 @@ fn new_column_from_map_aux(
     R!("as.data.frame({{l}})")
 }
 
-/// Add a new column to a data frame from a list of values, matching by the names of the values.
-/// `df` is a data frame.
+/// Compute a new column for a data frame from a list of values and an existing column, matching by the names of the values.
 /// `column` is the column to match.
-/// `values` is a list of values (a map like from `lmutils::map_from_pairs`)
-/// `new_column` is the new column to create.
+/// `values` is a named list of values.
+/// `new_column` is the new column name.
 /// @export
 #[extendr]
 pub fn new_column_from_map(df: List, column: &str, values: List, new_column: &str) -> Result<Robj> {
@@ -883,13 +800,12 @@ pub fn new_column_from_map(df: List, column: &str, values: List, new_column: &st
     new_column_from_map_aux(df, map, column, new_column)
 }
 
-/// Add a new column to a data frame from two character vectors of names and values, matching by
-/// the names.
+/// Compute a new column for a data frame from two character vectors of names and values, matching by the names.
 /// `df` is a data frame.
 /// `column` is the column to match.
 /// `names` is a character vector of names.
 /// `values` is a character vector of values.
-/// `new_column` is the new column to create.
+/// `new_column` is the new column name.
 /// @export
 #[extendr]
 pub fn new_column_from_map_pairs(
@@ -940,16 +856,25 @@ impl<'a> Col<'a> {
             Col::Logical(v) => v.len(),
         }
     }
+
+    fn cmps(&self) -> Vec<Cmp> {
+        match self {
+            Col::Str(v) => v.iter().map(|s| Cmp::Str(s.to_string())).collect(),
+            Col::Int(v) => v.iter().map(|i| Cmp::Int(*i)).collect(),
+            Col::Real(v) => v.iter().map(|f| Cmp::Real(*f)).collect(),
+            Col::Logical(v) => v.iter().map(|b| Cmp::Int(b.inner() as i32)).collect(),
+        }
+    }
 }
 
-/// Mutably sorts a data frame by multiple columns in ascending order. All columns must be
-/// be numeric (double or integer), character, or logical vectors.
+/// Mutably sorts a data frame in ascending order by multiple columns in ascending order.
 /// `df` is a data frame.
-/// `columns` is a character vector of columns to sort by.
+/// `columns` is a character vector of columns to sort by. The sort columns must be numeric
+/// (integer or double), character, or logical vectors.
 /// @export
 #[extendr]
 pub fn df_sort_asc(df: List, columns: &[Rstr]) -> Result<Robj> {
-    let mut names = df.iter().map(|(n, r)| (n, RobjPar(r))).collect::<Vec<_>>();
+    let mut names = df.iter().map(|(n, r)| (n, Par(r))).collect::<Vec<_>>();
     let cols = columns
         .iter()
         .map(|c| {
@@ -1003,127 +928,171 @@ pub fn df_sort_asc(df: List, columns: &[Rstr]) -> Result<Robj> {
             let slice: &mut [Rbool] = col.as_typed_slice_mut().unwrap();
             let new = indices.iter().map(|&i| slice[i]).collect::<Vec<_>>();
             slice.clone_from_slice(&new);
+        } else if col.is_list() {
+            let mut list = col.as_list().unwrap();
+            let new = indices
+                .iter()
+                .map(|&i| list.elt(i).unwrap().clone())
+                .collect::<Vec<_>>();
+            for (i, v) in new.into_iter().enumerate() {
+                list.set_elt(i, v).unwrap();
+            }
+        } else {
+            panic!("column must be a vector");
         }
     });
     Ok(().into())
 }
 
-/// Combine a list of double vectors into a matrix.
-/// `data` is a list of double vectors.
-/// `out` is a file name to write the matrix to or `NULL` to return the matrix.
+#[derive(Clone, Debug)]
+enum Cmp {
+    Str(String),
+    Int(i32),
+    Real(f64),
+}
+
+impl Cmp {
+    fn cmp(&self, other: &Cmp) -> Ordering {
+        match (self, other) {
+            (Cmp::Str(a), Cmp::Str(b)) => a.cmp(b),
+            (Cmp::Int(a), Cmp::Int(b)) => a.cmp(b),
+            (Cmp::Real(a), Cmp::Real(b)) => a.partial_cmp(b).unwrap(),
+            _ => panic!("cannot compare different types"),
+        }
+    }
+
+    fn into_string(self) -> String {
+        match self {
+            Cmp::Str(s) => s,
+            Cmp::Int(i) => i.to_string(),
+            Cmp::Real(f) => f.to_string(),
+        }
+    }
+}
+
+impl PartialEq for Cmp {
+    fn eq(&self, other: &Self) -> bool {
+        self.cmp(other) == Ordering::Equal
+    }
+}
+
+/// Splits a data frame into multiple data frames by a column. This function will mutably sort the
+/// data frame by the column before splitting.
+/// `df` is a data frame.
+/// `by` is the column to split by. The column must be a numeric (integer or double) or character
+/// vector.
 /// @export
 #[extendr]
-pub fn combine_vectors(data: List, out: Nullable<&str>) -> Result<Nullable<RMatrix<f64>>> {
-    let ncols = data.len();
-    let nrows = data
+pub fn df_split(df: List, by: &str) -> Result<Robj> {
+    df_sort_asc(df.clone(), &[by.into()])?;
+    let (_, col) = df
         .iter()
-        .map(|(_, v)| {
-            v.as_real_slice()
-                .expect("all vectors must be doubles")
-                .len()
-        })
-        .next()
-        .unwrap_or(0);
-    let data = data.iter().map(|(_, v)| RobjPar(v)).collect::<Vec<_>>();
-    let mut mat = vec![MaybeUninit::uninit(); ncols * nrows];
-    mat.par_chunks_exact_mut(nrows)
-        .zip(data.into_par_iter())
-        .for_each(|(data, v)| {
-            let v = v.as_real_slice().expect("all vectors must be doubles");
-            if v.len() != nrows {
-                panic!("all vectors must have the same length");
-            }
-            let v: &[MaybeUninit<f64>] = unsafe { std::mem::transmute(v) };
-            data.copy_from_slice(v);
-        });
-
-    let mat = Matrix::Owned(OwnedMatrix::new(
-        nrows,
-        ncols,
-        unsafe { std::mem::transmute(mat) },
-        None,
-    ));
-    if let NotNull(out) = out {
-        save_matrix(mat.to_rmatrix()?, out)?;
-        Ok(Nullable::Null)
+        .find(|(n, _)| *n == by)
+        .unwrap_or_else(|| panic!("column {} not found", by));
+    let unique = if col.is_string() {
+        let mut col = col.as_str_vector().unwrap().to_vec();
+        col.dedup();
+        col.len()
+    } else if col.is_integer() {
+        let mut col = col.as_integer_slice().unwrap().to_vec();
+        col.dedup();
+        col.len()
+    } else if col.is_real() {
+        let mut col = col.as_real_slice().unwrap().to_vec();
+        col.dedup();
+        col.len()
     } else {
-        Ok(Nullable::NotNull(mat.to_rmatrix()?))
-    }
-}
-
-/// Extend matrices into a single matrix by rows.
-/// `data` is a character vector of file names or a list of matrices.
-/// `out` is a file name to write the combined matrix to.
-/// If `out` is `NULL`, the combined matrix is returned otherwise `NULL`.
-/// @export
-#[extendr]
-pub fn extend_matrices(data: Robj, out: Nullable<&str>) -> Result<Nullable<Robj>> {
-    init();
-
-    let out = match out {
-        Null => None,
-        NotNull(out) => Some(lmutils::File::from_str(out)?),
+        panic!("column must be a character, integer, or real vector");
     };
-    let data = file_or_matrix_list(data)?;
-    let res = if data.len() == 1 {
-        let mut data = data.into_iter();
-        data.next().expect("data has at least 1 element").1
+    if unique == 1 {
+        return Ok(df.into_robj());
+    }
+    let col = if col.is_string() {
+        Col::Str(col.as_str_vector().unwrap())
+    } else if col.is_integer() {
+        Col::Int(col.as_integer_slice().unwrap())
+    } else if col.is_real() {
+        Col::Real(col.as_real_slice().unwrap())
     } else {
-        let mut data = data.into_iter();
-        let first = data.next().expect("data has at least 1 element").1;
-        first.extend(data.map(|i| i.1).collect())?
+        panic!("column must be a character, integer, or real vector");
     };
-    if let Some(out) = out {
-        out.write_matrix(&res.to_owned()?)?;
-        Ok(Nullable::Null)
-    } else {
-        Ok(Nullable::NotNull(res.into_robj()?))
+    let col = col.cmps();
+    if col.is_empty() {
+        return Ok(df.into_robj());
     }
-}
-
-/// Deduplicate a matrix by a column. The first occurrence of each value is kept.
-/// `data` is a string file name or a matrix.
-/// `by` is the column to deduplicate by.
-/// `out` is a file name to write the deduplicated matrix to or `NULL` to return the deduplicated matrix.
-/// @export
-#[extendr]
-pub fn dedup(data: Robj, by: &str, out: Nullable<&str>) -> Result<Nullable<Robj>> {
-    init();
-
-    let mut data = file_or_matrix(data)?.to_owned()?;
-    let out = match out {
-        Null => None,
-        NotNull(out) => Some(lmutils::File::from_str(out)?),
+    let mut dfs = Vec::with_capacity(unique);
+    let mut next = 0;
+    let mut start = 0;
+    let mut current = col[0].clone();
+    let names = df.iter().map(|(n, _)| n).collect::<Vec<_>>();
+    let values = df.iter().map(|(_, v)| v).collect::<Vec<_>>();
+    let mut group = |i, c: Cmp, force| -> Result<()> {
+        if c != current || force {
+            let subset = values
+                .iter()
+                .map(|v| {
+                    if v.is_string() {
+                        let v = v.as_str_vector().unwrap();
+                        v[start..i]
+                            .iter()
+                            // .map(|s| s.to_string())
+                            .collect::<Vec<_>>()
+                            .into_robj()
+                    } else if v.is_integer() {
+                        let v = v.as_integer_slice().unwrap();
+                        v[start..i].to_vec().into_robj()
+                    } else if v.is_real() {
+                        let v = v.as_real_slice().unwrap();
+                        v[start..i].to_vec().into_robj()
+                    } else if v.is_logical() {
+                        let v = v.as_logical_slice().unwrap();
+                        v[start..i].to_vec().into_robj()
+                    } else if v.is_list() {
+                        List::from_values(
+                            v.as_list()
+                                .unwrap()
+                                .iter()
+                                .skip(start)
+                                .take(i - start)
+                                .map(|(_, v)| v),
+                        )
+                        .into_robj()
+                    } else {
+                        panic!("column must be a vector");
+                    }
+                })
+                .collect::<Vec<_>>();
+            let l = i - start;
+            let df = List::from_names_and_values(names.clone(), subset)?;
+            df.set_class(&["data.frame"])?;
+            df.set_attrib(
+                row_names_symbol(),
+                (1..=l).map(|x| x.to_string()).collect_robj(),
+            )?;
+            next += 1;
+            let r = std::mem::replace(&mut current, c);
+            dfs.push((r, df));
+            start = i;
+        }
+        Ok(())
     };
-    data.dedup_by_column(by);
-    if let Some(out) = out {
-        out.write_matrix(&data)?;
-        Ok(Nullable::Null)
-    } else {
-        Ok(Nullable::NotNull(data.into_matrix().into_robj()?))
+    let len = col.len();
+    let last = col[col.len() - 1].clone();
+    for (i, c) in col.into_iter().enumerate() {
+        group(i, c, false)?;
     }
+    group(len, last, true)?;
+
+    Ok(List::from_pairs(
+        dfs.into_iter()
+            .map(|(n, df)| (n.into_string(), df.into_robj())),
+    )
+    .into_robj())
 }
 
-/// Multiply two matrices.
-/// `a` and `b` are string file names or matrices.
-/// `out` is the name of the file to save to.
-/// If `out` is `NULL`, the cross product is returned otherwise `NULL`.
-/// @export
-#[extendr]
-pub fn mul(a: Robj, b: Robj, out: Nullable<&str>) -> Result<Nullable<RMatrix<f64>>> {
-    init();
+// END DATA FRAME FUNCTIONS
 
-    let a = file_or_matrix(a)?;
-    let b = file_or_matrix(b)?;
-    let mut mat = a.as_mat_ref()? * b.as_mat_ref()?;
-    let mat = Matrix::Ref(mat.as_mut());
-    if let NotNull(out) = out {
-        File::from_str(out)?.write_matrix(&mat.to_owned()?)?;
-        Ok(Nullable::Null)
-    } else {
-        Ok(Nullable::NotNull(mat.to_rmatrix()?))
-    }
-}
+// CONFIG FUNCTIONS
 
 /// Set the log level.
 /// `level` is the log level.
@@ -1133,16 +1102,16 @@ pub fn set_log_level(level: &str) {
     std::env::set_var("LMUTILS_LOG", level);
 }
 
-/// Set the number of main threads to use.
+/// Sets the core parallelism for lmutils.
 /// This is the number of primary operations to perform at once.
 /// `num` is the number of main threads.
 /// @export
 #[extendr]
-pub fn set_num_main_threads(num: u32) {
-    std::env::set_var("LMUTILS_NUM_MAIN_THREADS", num.to_string());
+pub fn set_core_parallelism(num: u32) {
+    std::env::set_var("LMUTILS_CORE_PARALLELISM", num.to_string());
 }
 
-/// Set the number of worker threads to use.
+/// Set the number of worker threads to use. By default this value is `num_cpus::get() / 2`.
 /// This is the number of threads to use for parallel operations.
 /// `num` is the number of worker threads.
 /// @export
@@ -1151,37 +1120,220 @@ pub fn set_num_worker_threads(num: u32) {
     std::env::set_var("LMUTILS_NUM_WORKER_THREADS", num.to_string());
 }
 
+// END CONFIG FUNCTIONS
+
+// INTERNAL FUNCTIONS
+
+/// @export
+#[extendr]
+#[allow(unreachable_code)]
+pub fn internal_lmutils_fd_into_file(file: &str, fd: i32) {
+    init();
+
+    #[cfg(unix)]
+    {
+        use std::os::fd::FromRawFd;
+
+        std::env::set_var("LMUTILS_FD", "1");
+        // read from the fd in uncompressed rkyv and write to the file
+        let file = lmutils::File::from_str(file).unwrap();
+        // std::thread::sleep(std::time::Duration::from_secs(60));
+        let fd = unsafe { std::fs::File::from_raw_fd(fd) };
+        let mut matrix = lmutils::File::new("", lmutils::FileType::Rkyv, false)
+            .read_from_reader(fd)
+            .unwrap();
+        file.write(&mut matrix).unwrap();
+        return;
+    }
+    panic!("unsupported platform")
+}
+
+/// @export
+#[extendr]
+#[allow(unreachable_code)]
+pub fn internal_lmutils_file_into_fd(file: &str, fd: i32) {
+    init();
+
+    #[cfg(unix)]
+    {
+        use std::os::fd::FromRawFd;
+
+        std::env::set_var("LMUTILS_FD", "1");
+        // read from the file and write to the fd in rkyv format
+        let file = lmutils::File::from_str(file).unwrap();
+        let fd = unsafe { std::fs::File::from_raw_fd(fd) };
+        let mut matrix = file.read().unwrap();
+        lmutils::File::new("", lmutils::FileType::Rkyv, false)
+            .write_matrix_to_writer(fd, &mut matrix)
+            .unwrap();
+        return;
+    }
+    panic!("unsupported platform")
+}
+
+// END INTERNAL FUNCTIONS
+
+// DEPRECATED FUNCTIONS
+
+/// DEPRECATED
+/// Convert files from one format to another.
+/// `from` is a list of matrix convertable objects.
+/// `to` is a list of file names to write to.
+/// @export
+#[extendr]
+#[deprecated]
+pub fn convert_file(from: Robj, to: &[Rstr]) -> Result<()> {
+    init();
+
+    save(from, to)
+}
+
+/// DEPRECATED
+/// Save a matrix to a file.
+/// `mat` must be a double matrix.
+/// `out` is the name of the file to save to.
+/// @export
+#[extendr]
+#[deprecated]
+pub fn save_matrix(mat: Robj, out: &[Rstr]) -> Result<()> {
+    init();
+
+    save(mat, out)
+}
+
+/// DEPRECATED
+/// Convert a data frame to a file.
+/// `df` must be a numeric data frame, numeric matrix, or a string RData file name.
+/// `out` is the name of the file to save to.
+/// If `out` is `NULL`, the matrix is returned otherwise `NULL`.
+/// @export
+#[extendr]
+#[deprecated]
+pub fn to_matrix(df: Robj, out: Nullable<Robj>) -> Result<Robj> {
+    maybe_mutating_return(df, out, Ok)
+}
+
+/// Standardize a matrix. All NaN values are replaced with the mean of the column and each column is scaled to have a mean of 0 and a standard deviation of 1.
+/// `data` is a string file name or a matrix.
+/// `out` is a file name to write the normalized matrix to or `NULL` to return the normalized
+/// matrix.
+/// @export
+#[extendr]
+#[deprecated]
+pub fn standardize(data: Robj, out: Robj) -> Result<Robj> {
+    maybe_return_paired(data, out, |mut data| {
+        data.standardize_columns()?;
+        Ok(data)
+    })
+}
+
+/// DEPRECATED
+/// Recursively converts a directory of files to the selected format.
+/// `from` is the directory to read from.
+/// `to` is the directory to write to.
+/// `file_type` is the file extension to write as.
+/// If `to` is `NULL`, the files are written to `from`.
+/// @export
+#[extendr]
+#[deprecated]
+pub fn to_matrix_dir(from: &str, to: Nullable<&str>, file_type: &str) -> Result<()> {
+    save_dir(from, to, file_type)
+}
+
+/// DEPRECATED
+/// Extend matrices into a single matrix by rows.
+/// `data` is a character vector of file names or a list of matrices.
+/// `out` is a file name to write the combined matrix to.
+/// If `out` is `NULL`, the combined matrix is returned otherwise `NULL`.
+/// @export
+#[extendr]
+#[deprecated]
+pub fn extend_matrices(data: Robj, out: Nullable<Robj>) -> Result<Nullable<Robj>> {
+    maybe_return_vec(data, out, |mut first, mut data| {
+        first.combine_rows(data.as_mut_slice())?;
+        Ok(first)
+    })
+}
+
+/// DEPRECATED
+/// Set the number of main threads to use.
+/// This is the number of primary operations to perform at once.
+/// `num` is the number of main threads.
+/// @export
+#[extendr]
+#[deprecated]
+pub fn set_num_main_threads(num: u32) {
+    std::env::set_var("LMUTILS_NUM_MAIN_THREADS", num.to_string());
+}
+
+/// DEPRECATED
+/// Combine matrices into a single matrix by columns.
+/// `data` is a character vector of file names or a list of matrices.
+/// `out` is a file name to write the combined matrix to.
+/// If `out` is `NULL`, the combined matrix is returned otherwise `NULL`.
+/// @export
+#[extendr]
+#[deprecated]
+pub fn combine_matrices(data: Robj, out: Nullable<Robj>) -> Result<Nullable<Robj>> {
+    maybe_return_vec(data, out, |mut first, mut data| {
+        first.combine_columns(data.as_mut_slice())?;
+        Ok(first)
+    })
+}
+
+/// DEPRECATED
+/// Load a matrix from a file.
+/// `file` is the name of the file to load from.
+/// @export
+#[extendr]
+pub fn load_matrix(file: Robj) -> Result<Robj> {
+    maybe_return_paired(file, ().into(), Ok)
+}
+
+// END DEPRECATED FUNCTIONS
+
 // Macro to generate exports.
 // This ensures exported functions are registered with R.
 // See corresponding C code in `entrypoint.c`.
 extendr_module! {
     mod lmutils;
-    fn convert_file;
-    fn convert_files;
+
+    impl Mat;
+
+    fn save;
+    fn save_dir;
     fn calculate_r2;
-    fn calculate_r2_ranges;
-    fn combine_matrices;
-    fn remove_rows;
-    fn save_matrix;
-    fn to_matrix;
-    fn crossprod;
-    fn to_matrix_dir;
-    fn standardize;
-    fn load_matrix;
     fn column_p_values;
+    fn combine_vectors;
+    fn remove_rows;
+    fn crossprod;
+    fn mul;
+    fn load;
     fn match_rows;
     fn match_rows_dir;
+    fn dedup;
+
     fn new_column_from_regex;
     fn map_from_pairs;
     fn new_column_from_map;
     fn new_column_from_map_pairs;
     fn df_sort_asc;
-    fn combine_vectors;
-    fn extend_matrices;
-    fn dedup;
-    fn mul;
+    fn df_split;
 
     fn set_log_level;
-    fn set_num_main_threads;
+    fn set_core_parallelism;
     fn set_num_worker_threads;
+
+    fn internal_lmutils_fd_into_file;
+    fn internal_lmutils_file_into_fd;
+
+    fn convert_file;
+    fn save_matrix;
+    fn standardize;
+    fn to_matrix;
+    fn to_matrix_dir;
+    fn extend_matrices;
+    fn set_num_main_threads;
+    fn combine_matrices;
+    fn load_matrix;
 }

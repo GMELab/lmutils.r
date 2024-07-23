@@ -2,12 +2,14 @@
 % Please edit documentation in R/extendr-wrappers.R
 \name{load_matrix}
 \alias{load_matrix}
-\title{Load a matrix from a file.
+\title{DEPRECATED
+Load a matrix from a file.
 \code{file} is the name of the file to load from.}
 \usage{
 load_matrix(file)
 }
 \description{
+DEPRECATED
 Load a matrix from a file.
 \code{file} is the name of the file to load from.
 }

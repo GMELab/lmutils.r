@@ -2,13 +2,15 @@
 % Please edit documentation in R/extendr-wrappers.R
 \name{save_matrix}
 \alias{save_matrix}
-\title{Save a matrix to a file.
+\title{DEPRECATED
+Save a matrix to a file.
 \code{mat} must be a double matrix.
 \code{out} is the name of the file to save to.}
 \usage{
 save_matrix(mat, out)
 }
 \description{
+DEPRECATED
 Save a matrix to a file.
 \code{mat} must be a double matrix.
 \code{out} is the name of the file to save to.

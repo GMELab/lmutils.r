@@ -2,7 +2,8 @@
 % Please edit documentation in R/extendr-wrappers.R
 \name{extend_matrices}
 \alias{extend_matrices}
-\title{Extend matrices into a single matrix by rows.
+\title{DEPRECATED
+Extend matrices into a single matrix by rows.
 \code{data} is a character vector of file names or a list of matrices.
 \code{out} is a file name to write the combined matrix to.
 If \code{out} is \code{NULL}, the combined matrix is returned otherwise \code{NULL}.}
@@ -10,6 +11,7 @@ If \code{out} is \code{NULL}, the combined matrix is returned otherwise \code{NU
 extend_matrices(data, out)
 }
 \description{
+DEPRECATED
 Extend matrices into a single matrix by rows.
 \code{data} is a character vector of file names or a list of matrices.
 \code{out} is a file name to write the combined matrix to.
