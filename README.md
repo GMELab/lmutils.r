@@ -95,6 +95,8 @@ devtools::install_github("mrvillage/lmutils.r")
 - `rdata` (NOTE: these files can only be processed sequentially, not in parallel like the rest)
 All files can be optionally compressed with `gzip`, `rdata` files are assumed to be compressed without looking for a `.gz` file extension.
 
+### Warning
+
 ## Introduction
 
 `lmutils` is an R package that provides utilities for working with matrices and data frames. It is built on top of the [Rust programming language](https://rust-lang.org) for performance and safety. The package provides a way to store matrices in memory and perform operations on them, as well as functions for working with data frames.
@@ -151,6 +153,13 @@ results <- lmutils::calculate_r2(geneBlocks, outcomes)
 ## `Mat` Objects
 
 `lmutils::Mat` objects are a way to store matrices in memory and perform operations on them. They can be used to store operations or chain operations together for later execution. This can be useful if, for example, you wish to a hundred large matrices from files and standardize them all before using `lmutils::calculate_r2`. Using `Mat` objects, you can store the operations you wish to perform and `Mat` will execute them only when the matrix is loaded.
+
+Passing the same `Mat` object multiple times in a single function call may cause undefined behavior. For example, the following code may not work as expected:
+
+```r
+mat <- lmutils::Mat$new("matrix1.csv")
+lmutils::calculate_r2(list(mat, mat), mat)
+```
 
 ### `lmutils::Mat$new`
 
