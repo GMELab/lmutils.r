@@ -95,8 +95,6 @@ devtools::install_github("mrvillage/lmutils.r")
 - `rdata` (NOTE: these files can only be processed sequentially, not in parallel like the rest)
 All files can be optionally compressed with `gzip`, `rdata` files are assumed to be compressed without looking for a `.gz` file extension.
 
-### Warning
-
 ## Introduction
 
 `lmutils` is an R package that provides utilities for working with matrices and data frames. It is built on top of the [Rust programming language](https://rust-lang.org) for performance and safety. The package provides a way to store matrices in memory and perform operations on them, as well as functions for working with data frames.
