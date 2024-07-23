@@ -383,6 +383,13 @@ impl Mat {
         self.t_rename_column_if_exists(old, new);
         Ok(self.ptr())
     }
+
+    /// Remove identical columns from this matrix. The first occurrence of each column is kept.
+    /// @export
+    pub fn remove_identical_columns(&mut self) -> Result<Ptr> {
+        self.t_remove_identical_columns();
+        Ok(self.ptr())
+    }
 }
 
 // END MATRIX OBJECT
