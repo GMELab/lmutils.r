@@ -41,6 +41,7 @@
   - [`lmutils::Mat$max_row_sum`](#lmutilsmatmax_row_sum)
   - [`lmutils::Mat$rename_column`](#lmutilsmatrename_column)
   - [`lmutils::Mat$rename_column_if_exists`](#lmutilsmatrename_column_if_exists)
+  - [`lmutils::Mat$remove_duplicate_columns`](#lmutilsmatremove_duplicate_columns)
   - [`lmutils::Mat$remove_identical_columns`](#lmutilsmatremove_identical_columns)
 - [Matrix Functions](#matrix-functions)
   - [`lmutils::save`](#lmutilssave)
@@ -451,9 +452,17 @@ Rename a column by name if it exists.
 mat$rename_column_if_exists("IID", "eid")
 ```
 
+### `lmutils::Mat$remove_duplicate_columns`
+
+Remove columns that are duplicates of other columns. The first column is kept.
+
+```r
+mat$remove_duplicate_columns()
+```
+
 ### `lmutils::Mat$remove_identical_columns`
 
-Remove columns that are identical to other columns. The first column is kept.
+Remove columns with all identical entries.
 
 ```r
 mat$remove_identical_columns()

@@ -384,7 +384,14 @@ impl Mat {
         Ok(self.ptr())
     }
 
-    /// Remove identical columns from this matrix. The first occurrence of each column is kept.
+    /// Remove duplicate columns from this matrix. The first occurrence of each column is kept.
+    /// @export
+    pub fn remove_duplicate_columns(&mut self) -> Result<Ptr> {
+        self.t_remove_duplicate_columns();
+        Ok(self.ptr())
+    }
+
+    /// Remove columns with all identical entries from this matrix.
     /// @export
     pub fn remove_identical_columns(&mut self) -> Result<Ptr> {
         self.t_remove_identical_columns();
