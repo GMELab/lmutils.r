@@ -62,6 +62,12 @@
   - [`lmutils::new_column_from_map`](#lmutilsnew_column_from_map)
   - [`lmutils::new_column_from_map_pairs`](#lmutilsnew_column_from_map_pairs)
   - [`lmutils::df_sort_asc`](#lmutilsdf_sort_asc)
+- [Other Functions](#other-functions)
+  - [`lmutils::compute_r2`](#lmutilscompute_r2)
+  - [`lmutils::mean`](#lmutilsmean)
+  - [`lmutils::median`](#lmutilsmedian)
+  - [`lmutils::sd`](#lmutilssd)
+  - [`lmutils::var`](#lmutilsvar)
 - [Configuration](#configuration)
 
 ## Installation
@@ -737,6 +743,59 @@ df <- data.frame(a=c(1, 2, 3), b=c("a", "b", "c"))
 lmutils::df_split(
     df,
     "b",
+)
+```
+
+## Other Functions
+
+### `lmutils::compute_r2`
+
+Compute the R^2 value for given actual and predicted vectors.
+
+```r
+lmutils::compute_r2(
+    c(1, 2, 3),
+    c(1, 2, 3),
+)
+```
+
+### `lmutils::mean`
+
+Computes the mean of a vector.
+
+```r
+lmutils::mean(
+    c(1, 2, 3),
+)
+```
+
+### `lmutils::median`
+
+Computes the median of a vector.
+
+```r
+lmutils::median(
+    c(1, 2, 3),
+)
+```
+
+### `lmutils::sd`
+
+Computes the standard deviation of a vector.
+
+```r
+lmutils::sd(
+    c(1, 2, 3),
+)
+```
+
+### `lmutils::var`
+
+Computes the variance of a vector.
+
+```r
+lmutils::var(
+    c(1, 2, 3),
 )
 ```
 

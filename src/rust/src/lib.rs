@@ -1106,6 +1106,58 @@ pub fn df_split(df: List, by: &str) -> Result<Robj> {
 
 // END DATA FRAME FUNCTIONS
 
+// OTHER FUNCTIONS
+
+/// Compute the R^2 value for given actual and predicted vectors.
+/// `actual` is a numeric vector of actual values.
+/// `predicted` is a numeric vector of predicted values.
+/// @export
+#[extendr]
+pub fn calculate_r2(actual: &[f64], predicted: &[f64]) -> Result<f64> {
+    Ok(lmutils::compute_r2(actual, predicted))
+}
+
+/// Compute the mean of a numeric vector.
+/// `x` is a numeric vector.
+/// @export
+#[extendr]
+pub fn mean(x: &[f64]) -> f64 {
+    Ok(lmutils::mean(x))
+}
+
+/// Compute the median of a numeric vector.
+/// `x` is a numeric vector.
+/// @export
+#[extendr]
+pub fn median(x: &[f64]) -> f64 {
+    let mut sorted = x.to_vec();
+    sorted.sort_unstable_by(|a, b| a.partial_cmp(b).unwrap());
+    let len = sorted.len();
+    if len % 2 == 0 {
+        (sorted[len / 2 - 1] + sorted[len / 2]) / 2.0
+    } else {
+        sorted[len / 2]
+    }
+}
+
+/// Compute the standard deviation of a numeric vector.
+/// `x` is a numeric vector.
+/// @export
+#[extendr]
+pub fn sd(x: &[f64]) -> f64 {
+    Ok(lmutils::variance(x).sqrt())
+}
+
+/// Compute the variance of a numeric vector.
+/// `x` is a numeric vector.
+/// @export
+#[extendr]
+pub fn var(x: &[f64]) -> f64 {
+    Ok(lmutils::variance(x))
+}
+
+// END OTHER FUNCTIONS
+
 // CONFIG FUNCTIONS
 
 /// Set the log level.
@@ -1347,6 +1399,12 @@ extendr_module! {
     fn new_column_from_map_pairs;
     fn df_sort_asc;
     fn df_split;
+
+    fn compute_r2;
+    fn mean;
+    fn median;
+    fn sd;
+    fn var;
 
     fn set_log_level;
     fn set_core_parallelism;
