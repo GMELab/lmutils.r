@@ -60,6 +60,15 @@ impl Mat {
             .unwrap_or(().into()))
     }
 
+    /// Get the colnames of this matrix or `NULL` if there are none.
+    /// @export
+    pub fn colnames(&mut self) -> Result<Option<Vec<String>>> {
+        let mat: &mut lmutils::Matrix = &mut *self;
+        Ok(mat
+            .colnames()?
+            .map(|x| x.into_iter().map(|x| x.to_string()).collect()))
+    }
+
     /// Save this matrix to a file.
     /// `file` is the name of the file to save to.
     /// @export

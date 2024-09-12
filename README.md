@@ -11,6 +11,7 @@
   - [`lmutils::Mat$new`](#lmutilsmatnew)
   - [`lmutils::Mat$r`](#lmutilsmatr)
   - [`lmutils::Mat$col`](#lmutilsmatcol)
+  - [`lmutils::Mat$colnames`](#lmutilsmatcolnames)
   - [`lmutils::Mat$save`](#lmutilsmatsave)
   - [`lmutils::Mat$combine_columns`](#lmutilsmatcombine_columns)
   - [`lmutils::Mat$combine_rows`](#lmutilsmatcombine_rows)
@@ -192,6 +193,14 @@ Get a column by name or index.
 ```r
 col <- mat$col("eid")
 col <- mat$col(1)
+```
+
+### `lmutils::Mat$colnames`
+
+Get the column names of the matrix or `NULL` if there are none.
+
+```r
+colnames <- mat$colnames()
 ```
 
 ### `lmutils::Mat$save`
