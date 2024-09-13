@@ -530,6 +530,8 @@ pub fn column_p_values(data: Robj, outcomes: Robj) -> Result<Robj> {
     debug!("Results {:?}", res);
     Ok(data_frame!(
         p_value = res.iter().map(|r| r.p_value()).collect::<Vec<_>>(),
+        beta = res.iter().map(|r| r.beta()).collect::<Vec<_>>(),
+        intercept = res.iter().map(|r| r.intercept()).collect::<Vec<_>>(),
         data = res.iter().map(|r| r.data()).collect::<Vec<_>>(),
         data_column = res.iter().map(|r| r.data_column()).collect::<Vec<_>>(),
         outcome = res.iter().map(|r| r.outcome()).collect::<Vec<_>>()
@@ -1199,14 +1201,14 @@ pub fn set_num_worker_threads(num: u32) {
 /// @export
 #[extendr]
 pub fn disable_predicted() {
-    std::env::set_var("LMUTILS_DISABLE_PREDICTED", "1");
+    std::env::remove_var("LMUTILS_ENABLE_PREDICTED");
 }
 
 /// Enable the calculation of predicted values in `calculate_r2`.
 /// @export
 #[extendr]
 pub fn enable_predicted() {
-    std::env::remove_var("LMUTILS_DISABLE_PREDICTED");
+    std::env::set_var("LMUTILS_ENABLE_PREDICTED", "1");
 }
 
 // END CONFIG FUNCTIONS
