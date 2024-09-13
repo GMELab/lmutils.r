@@ -532,7 +532,7 @@ results <- lmutils::calculate_r2(
 Compute the p value of a linear regression between each pair of columns in data and outcomes.
 - `data` is a list of matrix convertable objects.
 - `outcomes` is a single matrix convertable object.
-The function returns a data frame with columns `p_value`, `data`, `data_column`, and `outcome`.
+The function returns a data frame with columns `p_value`, `beta`, `intercept`, `data`, `data_column`, and `outcome`.
 
 ```r
 results <- lmutils::column_p_values(

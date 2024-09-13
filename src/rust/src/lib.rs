@@ -512,7 +512,7 @@ pub fn calculate_r2(data: Robj, outcomes: Robj) -> Result<Robj> {
 /// Compute the p value of a linear regression between each pair of columns in two matrices.
 /// `data` is a list of matrix convertable objects.
 /// `outcomes` is a matrix convertable object.
-/// Returns a data frame with columns `p`, `data`, `data_column`, and `outcome`.
+/// Returns a data frame with columns `p`, `beta`, `intercept`, `data`, `data_column`, and `outcome`.
 /// @export
 #[extendr]
 pub fn column_p_values(data: Robj, outcomes: Robj) -> Result<Robj> {
