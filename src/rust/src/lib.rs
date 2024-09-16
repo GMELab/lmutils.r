@@ -590,7 +590,7 @@ pub fn combine_vectors(data: List, out: Nullable<&str>) -> Result<Nullable<RMatr
     }
 }
 
-/// Combine a potentially nested list of rows (vectors) into a matrix.
+/// Combine a potentially nested list of rows (double vectors) into a matrix.
 /// `data` is a list of lists of double vectors.
 /// `out` is an output file name or `NULL` to return the matrix.
 /// @export
