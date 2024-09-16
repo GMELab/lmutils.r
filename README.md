@@ -50,6 +50,7 @@
   - [`lmutils::calculate_r2`](#lmutilscalculate_r2)
   - [`lmutils::column_p_values`](#lmutilscolumn_p_values)
   - [`lmutils::combine_vectors`](#lmutilscombine_vectors)
+  - [`lmutils::combine_rows`](#lmutilscombine_rows)
   - [`lmutils::remove_rows`](#lmutilsremove_rows)
   - [`lmutils::crossprod`](#lmutilscrossprod)
   - [`lmutils::mul`](#lmutilsmul)
@@ -550,6 +551,19 @@ Combine a list of double vectors into a single matrix using the vectors as colum
 ```r
 lmutils::combine_vectors(
     list(1:3, 4:6),
+    "combined_matrix.csv",
+)
+```
+
+### `lmutils::combine_rows`
+
+Combine a potentially nested list of rows (double vectors) into a matrix.
+- `data` is a list of double vectors.
+- `out` is an output file name or `NULL` to return the matrix.
+
+```r
+lmutils::combine_rows(
+    list(list(c(1, 2, 3)), c(4, 5, 6)),
     "combined_matrix.csv",
 )
 ```

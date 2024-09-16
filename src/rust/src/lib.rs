@@ -62,11 +62,15 @@ impl Mat {
 
     /// Get the colnames of this matrix or `NULL` if there are none.
     /// @export
-    pub fn colnames(&mut self) -> Result<Option<Vec<String>>> {
+    pub fn colnames(&mut self) -> Result<Robj> {
         let mat: &mut lmutils::Matrix = &mut *self;
-        Ok(mat
+        let res = mat
             .colnames()?
-            .map(|x| x.into_iter().map(|x| x.to_string()).collect()))
+            .map(|x| x.into_iter().map(|x| x.to_string()).collect::<Vec<_>>());
+        match res {
+            Some(res) => Ok(res.into_robj()),
+            None => Ok(().into()),
+        }
     }
 
     /// Save this matrix to a file.
@@ -574,6 +578,101 @@ pub fn combine_vectors(data: List, out: Nullable<&str>) -> Result<Nullable<RMatr
         unsafe {
             std::mem::transmute::<std::vec::Vec<std::mem::MaybeUninit<f64>>, std::vec::Vec<f64>>(
                 mat,
+            )
+        },
+        None,
+    ));
+    if let NotNull(out) = out {
+        File::from_str(out)?.write(&mut mat)?;
+        Ok(Nullable::Null)
+    } else {
+        Ok(Nullable::NotNull(mat.to_rmatrix()?))
+    }
+}
+
+/// Combine a potentially nested list of rows (vectors) into a matrix.
+/// `data` is a list of lists of double vectors.
+/// `out` is an output file name or `NULL` to return the matrix.
+/// @export
+#[extendr]
+pub fn combine_rows(data: List, out: Nullable<&str>) -> Result<Nullable<RMatrix<f64>>> {
+    fn first_ncols(data: &Robj) -> usize {
+        if data.is_list() {
+            data.as_list()
+                .unwrap()
+                .into_iter()
+                .map(|(_, v)| first_ncols(&v))
+                .next()
+                .unwrap_or(0)
+        } else if data.is_real() {
+            data.len()
+        } else {
+            panic!("data must be a potentially nested list of double vectors")
+        }
+    }
+
+    let ncols = first_ncols(data.as_robj());
+
+    fn count_rows(data: &Robj, ncols: usize) -> usize {
+        if data.is_list() {
+            data.as_list()
+                .unwrap()
+                .into_iter()
+                .map(|(_, v)| count_rows(&v, ncols))
+                .sum()
+        } else if data.is_real() {
+            if data.as_real_slice().unwrap().len() == ncols {
+                1
+            } else {
+                panic!("all vectors must have the same length")
+            }
+        } else {
+            panic!("data must be a potentially nested list of double vectors")
+        }
+    }
+
+    let nrows = count_rows(data.as_robj(), ncols);
+
+    fn get_rows(data: Robj, mut next: usize, vec: &mut Vec<MaybeUninit<&'static [f64]>>) -> usize {
+        if let Some(data) = data.as_list() {
+            for (_, v) in data {
+                next = get_rows(v, next, vec);
+            }
+            next
+        } else if data.is_real() {
+            let data = unsafe { &*(data.as_real_slice().unwrap() as *const _) };
+            vec[next].write(data);
+            next + 1
+        } else {
+            panic!("data must be a potentially nested list of double vectors")
+        }
+    }
+
+    let mut rows = vec![MaybeUninit::uninit(); nrows];
+    get_rows(data.into_robj(), 0, &mut rows);
+    let rows = unsafe {
+        std::mem::transmute::<Vec<MaybeUninit<&'static [f64]>>, Vec<&'static [f64]>>(rows)
+    };
+
+    let data = vec![MaybeUninit::<f64>::uninit(); ncols * nrows];
+    rows.into_par_iter().enumerate().for_each(|(i, row)| {
+        for (j, &x) in row.iter().enumerate() {
+            unsafe {
+                data.as_ptr()
+                    .add(j * nrows + i)
+                    .cast_mut()
+                    .cast::<f64>()
+                    .write(x)
+            };
+        }
+    });
+
+    let mut mat = Matrix::Owned(OwnedMatrix::new(
+        nrows,
+        ncols,
+        unsafe {
+            std::mem::transmute::<std::vec::Vec<std::mem::MaybeUninit<f64>>, std::vec::Vec<f64>>(
+                data,
             )
         },
         None,
@@ -1124,7 +1223,7 @@ pub fn df_split(df: List, by: &str) -> Result<Robj> {
 /// `predicted` is a numeric vector of predicted values.
 /// @export
 #[extendr]
-pub fn calculate_r2(actual: &[f64], predicted: &[f64]) -> Result<f64> {
+pub fn compute_r2(actual: &[f64], predicted: &[f64]) -> Result<f64> {
     Ok(lmutils::compute_r2(actual, predicted))
 }
 
@@ -1133,7 +1232,7 @@ pub fn calculate_r2(actual: &[f64], predicted: &[f64]) -> Result<f64> {
 /// @export
 #[extendr]
 pub fn mean(x: &[f64]) -> f64 {
-    Ok(lmutils::mean(x))
+    lmutils::mean(x)
 }
 
 /// Compute the median of a numeric vector.
@@ -1156,7 +1255,7 @@ pub fn median(x: &[f64]) -> f64 {
 /// @export
 #[extendr]
 pub fn sd(x: &[f64]) -> f64 {
-    Ok(lmutils::variance(x).sqrt())
+    lmutils::variance(x).sqrt()
 }
 
 /// Compute the variance of a numeric vector.
@@ -1164,7 +1263,7 @@ pub fn sd(x: &[f64]) -> f64 {
 /// @export
 #[extendr]
 pub fn var(x: &[f64]) -> f64 {
-    Ok(lmutils::variance(x))
+    lmutils::variance(x)
 }
 
 // END OTHER FUNCTIONS
@@ -1396,6 +1495,7 @@ extendr_module! {
     fn calculate_r2;
     fn column_p_values;
     fn combine_vectors;
+    fn combine_rows;
     fn remove_rows;
     fn crossprod;
     fn mul;

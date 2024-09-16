@@ -34,7 +34,7 @@ calculate_r2 <- function(data, outcomes) .Call(wrap__calculate_r2, data, outcome
 #' Compute the p value of a linear regression between each pair of columns in two matrices.
 #' `data` is a list of matrix convertable objects.
 #' `outcomes` is a matrix convertable object.
-#' Returns a data frame with columns `p`, `data`, `data_column`, and `outcome`.
+#' Returns a data frame with columns `p`, `beta`, `intercept`, `data`, `data_column`, and `outcome`.
 #' @export
 column_p_values <- function(data, outcomes) .Call(wrap__column_p_values, data, outcomes)
 
@@ -43,6 +43,12 @@ column_p_values <- function(data, outcomes) .Call(wrap__column_p_values, data, o
 #' `out` is an output file name or `NULL` to return the matrix.
 #' @export
 combine_vectors <- function(data, out) .Call(wrap__combine_vectors, data, out)
+
+#' Combine a potentially nested list of rows (vectors) into a matrix.
+#' `data` is a list of lists of double vectors.
+#' `out` is an output file name or `NULL` to return the matrix.
+#' @export
+combine_rows <- function(data, out) .Call(wrap__combine_rows, data, out)
 
 #' Remove rows from a matrix.
 #' `data` is a list of matrix convertable objects.
@@ -139,6 +145,32 @@ df_sort_asc <- function(df, columns) .Call(wrap__df_sort_asc, df, columns)
 #' @export
 df_split <- function(df, by) .Call(wrap__df_split, df, by)
 
+#' Compute the R^2 value for given actual and predicted vectors.
+#' `actual` is a numeric vector of actual values.
+#' `predicted` is a numeric vector of predicted values.
+#' @export
+compute_r2 <- function(actual, predicted) .Call(wrap__compute_r2, actual, predicted)
+
+#' Compute the mean of a numeric vector.
+#' `x` is a numeric vector.
+#' @export
+mean <- function(x) .Call(wrap__mean, x)
+
+#' Compute the median of a numeric vector.
+#' `x` is a numeric vector.
+#' @export
+median <- function(x) .Call(wrap__median, x)
+
+#' Compute the standard deviation of a numeric vector.
+#' `x` is a numeric vector.
+#' @export
+sd <- function(x) .Call(wrap__sd, x)
+
+#' Compute the variance of a numeric vector.
+#' `x` is a numeric vector.
+#' @export
+var <- function(x) .Call(wrap__var, x)
+
 #' Set the log level.
 #' `level` is the log level.
 #' @export
@@ -155,6 +187,14 @@ set_core_parallelism <- function(num) invisible(.Call(wrap__set_core_parallelism
 #' `num` is the number of worker threads.
 #' @export
 set_num_worker_threads <- function(num) invisible(.Call(wrap__set_num_worker_threads, num))
+
+#' Disable the calculation of predicted values in `calculate_r2`.
+#' @export
+disable_predicted <- function() invisible(.Call(wrap__disable_predicted))
+
+#' Enable the calculation of predicted values in `calculate_r2`.
+#' @export
+enable_predicted <- function() invisible(.Call(wrap__enable_predicted))
 
 #' @export
 internal_lmutils_fd_into_file <- function(file, fd) invisible(.Call(wrap__internal_lmutils_fd_into_file, file, fd))
@@ -239,6 +279,8 @@ Mat$r <- function() .Call(wrap__Mat__r, self)
 
 Mat$col <- function(column) .Call(wrap__Mat__col, self, column)
 
+Mat$colnames <- function() .Call(wrap__Mat__colnames, self)
+
 Mat$save <- function(file) .Call(wrap__Mat__save, self, file)
 
 Mat$combine_columns <- function(data) .Call(wrap__Mat__combine_columns, self, data)
@@ -298,6 +340,10 @@ Mat$max_row_sum <- function(value) .Call(wrap__Mat__max_row_sum, self, value)
 Mat$rename_column <- function(old, new) .Call(wrap__Mat__rename_column, self, old, new)
 
 Mat$rename_column_if_exists <- function(old, new) .Call(wrap__Mat__rename_column_if_exists, self, old, new)
+
+Mat$remove_duplicate_columns <- function() .Call(wrap__Mat__remove_duplicate_columns, self)
+
+Mat$remove_identical_columns <- function() .Call(wrap__Mat__remove_identical_columns, self)
 
 #' @rdname Mat
 #' @usage NULL
