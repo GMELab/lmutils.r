@@ -44,7 +44,7 @@ column_p_values <- function(data, outcomes) .Call(wrap__column_p_values, data, o
 #' @export
 combine_vectors <- function(data, out) .Call(wrap__combine_vectors, data, out)
 
-#' Combine a potentially nested list of rows (vectors) into a matrix.
+#' Combine a potentially nested list of rows (double vectors) into a matrix.
 #' `data` is a list of lists of double vectors.
 #' `out` is an output file name or `NULL` to return the matrix.
 #' @export
@@ -144,6 +144,11 @@ df_sort_asc <- function(df, columns) .Call(wrap__df_sort_asc, df, columns)
 #' vector.
 #' @export
 df_split <- function(df, by) .Call(wrap__df_split, df, by)
+
+#' Combine a potentially nested list of data frames into a single data frame.
+#' `data` is a list of lists of data frames.
+#' @export
+df_combine <- function(data) .Call(wrap__df_combine, data)
 
 #' Compute the R^2 value for given actual and predicted vectors.
 #' `actual` is a numeric vector of actual values.

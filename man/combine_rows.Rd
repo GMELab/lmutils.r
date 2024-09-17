@@ -2,14 +2,14 @@
 % Please edit documentation in R/extendr-wrappers.R
 \name{combine_rows}
 \alias{combine_rows}
-\title{Combine a potentially nested list of rows (vectors) into a matrix.
+\title{Combine a potentially nested list of rows (double vectors) into a matrix.
 \code{data} is a list of lists of double vectors.
 \code{out} is an output file name or \code{NULL} to return the matrix.}
 \usage{
 combine_rows(data, out)
 }
 \description{
-Combine a potentially nested list of rows (vectors) into a matrix.
+Combine a potentially nested list of rows (double vectors) into a matrix.
 \code{data} is a list of lists of double vectors.
 \code{out} is an output file name or \code{NULL} to return the matrix.
 }

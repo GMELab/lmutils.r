@@ -1214,6 +1214,115 @@ pub fn df_split(df: List, by: &str) -> Result<Robj> {
     .into_robj())
 }
 
+/// Combine a potentially nested list of data frames into a single data frame.
+/// `data` is a list of lists of data frames.
+/// @export
+#[extendr]
+pub fn df_combine(data: Robj) -> Result<Robj> {
+    fn first_ncols(data: &Robj) -> Robj {
+        if data.is_list() {
+            let l = data.as_list().unwrap();
+            if l.class()
+                .map(|x| x.into_iter().any(|x| x == "data.frame"))
+                .unwrap_or(false)
+            {
+                // is a data frame
+                l.get_attrib(names_symbol()).unwrap()
+            } else {
+                l.into_iter().map(|(_, v)| first_ncols(&v)).next().unwrap()
+            }
+        } else {
+            panic!("data must be a potentially nested list of data frames")
+        }
+    }
+
+    let colnames = first_ncols(&data);
+    let ncols = colnames.len();
+
+    fn count_rows(data: &Robj, ncols: usize) -> usize {
+        if data.is_list() {
+            let l = data.as_list().unwrap();
+            if l.class()
+                .map(|x| x.into_iter().any(|x| x == "data.frame"))
+                .unwrap_or(false)
+            {
+                if l.len() != ncols {
+                    panic!("all data frames must have the same number of columns")
+                }
+                let r = l.values().next().unwrap().len();
+                if l.iter().all(|(_, v)| v.len() == r) {
+                    r
+                } else {
+                    panic!("all data frame columns must have the same number of rows")
+                }
+            } else {
+                l.into_iter().map(|(_, v)| count_rows(&v, ncols)).sum()
+            }
+        } else {
+            panic!("data must be a potentially nested list of data frames")
+        }
+    }
+
+    let nrows = count_rows(&data, ncols);
+
+    let mut df_data = vec![vec![().into_robj(); nrows]; ncols];
+
+    fn get_rows(data: Robj, mut next: usize, vec: &mut Vec<Vec<Robj>>) -> usize {
+        if data.is_list() {
+            let l = data.as_list().unwrap();
+            if l.class()
+                .map(|x| x.into_iter().any(|x| x == "data.frame"))
+                .unwrap_or(false)
+            {
+                for (c, v) in l.values().enumerate() {
+                    if v.is_list() {
+                        for (r, x) in v.as_list().unwrap().values().enumerate() {
+                            vec[c][next + r] = x;
+                        }
+                    } else if v.is_real() {
+                        for (r, x) in v.as_real_iter().unwrap().enumerate() {
+                            vec[c][next + r] = x.into_robj();
+                        }
+                    } else if v.is_string() {
+                        for (r, x) in v.as_str_iter().unwrap().enumerate() {
+                            vec[c][next + r] = x.into_robj();
+                        }
+                    } else if v.is_integer() {
+                        for (r, x) in v.as_integer_slice().unwrap().iter().enumerate() {
+                            vec[c][next + r] = x.into_robj();
+                        }
+                    } else if v.is_logical() {
+                        for (r, x) in v.as_logical_iter().unwrap().enumerate() {
+                            vec[c][next + r] = x.into_robj();
+                        }
+                    } else {
+                        panic!("data must be a potentially nested list of data frames")
+                    }
+                }
+                next += l.values().next().unwrap().len();
+            } else {
+                for (_, v) in l {
+                    next = get_rows(v, next, vec);
+                }
+            }
+            next
+        } else {
+            panic!("data must be a potentially nested list of data frames")
+        }
+    }
+
+    get_rows(data, 0, &mut df_data);
+
+    let df = List::from_iter(df_data.into_iter().map(List::from_values)).set_attrib(
+        row_names_symbol(),
+        (1..=nrows).map(|x| x.to_string()).collect_robj(),
+    )?;
+    let df = df.set_attrib(names_symbol(), colnames)?;
+    let df = df.set_class(&["data.frame"])?;
+
+    Ok(df)
+}
+
 // END DATA FRAME FUNCTIONS
 
 // OTHER FUNCTIONS
@@ -1510,6 +1619,7 @@ extendr_module! {
     fn new_column_from_map_pairs;
     fn df_sort_asc;
     fn df_split;
+    fn df_combine;
 
     fn compute_r2;
     fn mean;

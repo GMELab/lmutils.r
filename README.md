@@ -64,6 +64,8 @@
   - [`lmutils::new_column_from_map`](#lmutilsnew_column_from_map)
   - [`lmutils::new_column_from_map_pairs`](#lmutilsnew_column_from_map_pairs)
   - [`lmutils::df_sort_asc`](#lmutilsdf_sort_asc)
+  - [`lmutils::df_split`](#lmutilsdf_split)
+  - [`lmutils::df_combine`](#lmutilsnew_column_from_map_pairs)
 - [Other Functions](#other-functions)
   - [`lmutils::compute_r2`](#lmutilscompute_r2)
   - [`lmutils::mean`](#lmutilsmean)
@@ -766,6 +768,17 @@ df <- data.frame(a=c(1, 2, 3), b=c("a", "b", "c"))
 lmutils::df_split(
     df,
     "b",
+)
+```
+
+### `lmutils::df_combine`
+
+Combines a potentially nested list of data frames into a single data frame. The data frames must have the same columns.
+- `data` is a list of data frames.
+
+```r
+lmutils::df_combine(
+    list(data.frame(a=1:3), data.frame(a=4:6))
 )
 ```
 
