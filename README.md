@@ -88,7 +88,7 @@ Then install the package using the following command:
 ```r
 install.packages("https://github.com/GMELab/lmutils.r/archive/refs/heads/master.tar.gz", repos=NULL) # use .zip for Windows
 # OR
-devtools::install_github("mrvillage/lmutils.r")
+devtools::install_github("GMELab/lmutils.r")
 ```
 
 ## Important Information
