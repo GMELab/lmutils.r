@@ -202,7 +202,7 @@ disable_predicted <- function() invisible(.Call(wrap__disable_predicted))
 enable_predicted <- function() invisible(.Call(wrap__enable_predicted))
 
 #' @export
-internal_lmutils_fd_into_file <- function(file, fd) invisible(.Call(wrap__internal_lmutils_fd_into_file, file, fd))
+internal_lmutils_fd_into_file <- function(file, fd, libc_2_27) invisible(.Call(wrap__internal_lmutils_fd_into_file, file, fd, libc_2_27))
 
 #' @export
 internal_lmutils_file_into_fd <- function(file, fd) invisible(.Call(wrap__internal_lmutils_file_into_fd, file, fd))
