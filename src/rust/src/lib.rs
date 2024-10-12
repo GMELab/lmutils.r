@@ -1450,7 +1450,7 @@ pub fn internal_lmutils_fd_into_file(file: &str, fd: i32) {
 /// @export
 #[extendr]
 #[allow(unreachable_code)]
-pub fn internal_lmutils_file_into_fd(file: &str, fd: i32) {
+pub fn internal_lmutils_file_into_fd(file: &str, fd: Robj) {
     init();
 
     #[cfg(unix)]
@@ -1460,7 +1460,11 @@ pub fn internal_lmutils_file_into_fd(file: &str, fd: i32) {
         std::env::set_var("LMUTILS_FD", "1");
         // read from the file and write to the fd in rkyv format
         let file = lmutils::File::from_str(file).unwrap();
-        let fd = unsafe { std::fs::File::from_raw_fd(fd) };
+        let fd = if fd.is_string() {
+            std::fs::File::open(fd.as_str().unwrap()).unwrap()
+        } else {
+            unsafe { std::fs::File::from_raw_fd(fd.as_integer().unwrap()) }
+        };
         let mut matrix = file.read().unwrap();
         lmutils::File::new("", lmutils::FileType::Rkyv, false)
             .write_matrix_to_writer(fd, &mut matrix)
