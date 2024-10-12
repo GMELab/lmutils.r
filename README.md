@@ -97,6 +97,7 @@ devtools::install_github("GMELab/lmutils.r")
 - Matrix convertable object - a data frame, matrix, file name (to read from), a numeric column vector, or a `Mat` object.
 - List of matrix convertable objects - a list of matrix convertable objects, a character vector of file names (to read from), or a single matrix convertable object.
 - Standard output file - a character vector of file names matching the length of the inputs, or `NULL` to return the output. If a single input, not in a list, was provided, the output will not be in a list.
+- Join - an inner join means only rows that match in both matrices are kept, a left join means all rows in the left matrix are kept, a right join means all rows in the right matrix are kept.
 
 ### File Types
 - `csv` (requires column headers)
