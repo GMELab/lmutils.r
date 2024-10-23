@@ -18,7 +18,7 @@ pub use crate::utils::{
 use extendr_api::{prelude::*, AsTypedSlice};
 use lmutils::{File, IntoMatrix, Join, Matrix, OwnedMatrix};
 use rayon::{prelude::*, slice::ParallelSliceMut};
-use tracing::{debug, info};
+use tracing::{debug, info, trace};
 use utils::{matrix_list, maybe_return_paired};
 
 // MATRIX OBJECT
