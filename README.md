@@ -100,14 +100,14 @@ devtools::install_github("GMELab/lmutils.r")
 - Join - an inner join means only rows that match in both matrices are kept, a left join means all rows in the left matrix are kept, a right join means all rows in the right matrix are kept.
 
 ### File Types
+All files can be optionally compressed with `gzip`, `rdata` files are assumed to be compressed without looking for a `.gz` file extension (as is the standard in R).
 - `csv` (requires column headers)
 - `tsv` (requires column headers)
 - `txt` (requires column headers)
 - `json`
 - `cbor`
 - `rkyv`
-- `rdata` (NOTE: these files can only be processed sequentially, not in parallel like the rest)
-All files can be optionally compressed with `gzip`, `rdata` files are assumed to be compressed without looking for a `.gz` file extension.
+- `rdata`
 
 ## Introduction
 
