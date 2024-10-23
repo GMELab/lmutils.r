@@ -423,7 +423,7 @@ impl Mat {
 /// @export
 #[extendr]
 pub fn save(from: Robj, to: &[Rstr]) -> Result<()> {
-    let mut from = named_matrix_list(from)?;
+    let mut from = matrix_list(from)?;
     let to = to.iter().map(|x| x.as_str()).collect::<Vec<_>>();
     let to = to
         .into_iter()
@@ -434,9 +434,10 @@ pub fn save(from: Robj, to: &[Rstr]) -> Result<()> {
         return Err("from and to must be the same length".into());
     }
 
-    for ((_, from), to) in from.iter_mut().zip(to.iter()) {
+    parallelize(from.iter_mut().zip(to.iter()).collect(), |_, (from, to)| {
         to.write(from)?;
-    }
+        Ok(())
+    })?;
 
     Ok(())
 }
