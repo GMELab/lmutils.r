@@ -503,7 +503,7 @@ pub fn calculate_r2(data: Robj, outcomes: Robj) -> Result<Robj> {
         outcome = res.iter().map(|r| r.outcome()).collect_robj(),
         n = res.iter().map(|r| r.n()).collect_robj(),
         m = res.iter().map(|r| r.m()).collect_robj(),
-        predicted = res.iter().map(|_| 0).collect::<Vec<_>>()
+        predicted = res.iter().map(|_| 0).collect_robj()
     )
     .as_list()
     .unwrap();
@@ -1464,22 +1464,25 @@ pub fn internal_lmutils_file_into_fd(file: &str, fd: Robj) {
 
     #[cfg(unix)]
     {
-        use std::os::fd::{AsRawFd, FromRawFd};
+        use std::os::fd::FromRawFd;
 
         std::env::set_var("LMUTILS_FD", "1");
         // read from the file and write to the fd in rkyv format
         let file = lmutils::File::from_str(file).unwrap();
         let mut matrix = file.read().unwrap();
+        trace!("file read");
         if fd.is_real() {
             let fd = unsafe { std::fs::File::from_raw_fd(fd.as_real().unwrap() as i32) };
             lmutils::File::new("", lmutils::FileType::Rkyv, false)
                 .write_matrix_to_writer(fd, &mut matrix)
                 .unwrap();
+            trace!("file written");
         } else {
             println!("{}", fd.as_str().unwrap());
             lmutils::File::new(fd.as_str().unwrap(), lmutils::FileType::Rkyv, false)
                 .write(&mut matrix)
                 .unwrap();
+            trace!("file written");
         };
 
         return;
