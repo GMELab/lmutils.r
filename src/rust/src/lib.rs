@@ -484,7 +484,8 @@ pub fn save_dir(from: &str, to: Nullable<&str>, file_type: &str) -> Result<()> {
 /// @export
 #[extendr]
 pub fn calculate_r2(data: Robj, outcomes: Robj) -> Result<Robj> {
-    let outcomes = matrix(outcomes)?;
+    let mut outcomes = matrix(outcomes)?;
+    outcomes.into_owned()?;
     let data = named_matrix_list(data)?;
     let (data_names, data): (Vec<_>, Vec<_>) = data.into_iter().unzip();
 
