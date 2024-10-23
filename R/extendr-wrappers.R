@@ -205,7 +205,7 @@ enable_predicted <- function() invisible(.Call(wrap__enable_predicted))
 internal_lmutils_fd_into_file <- function(file, fd, libc_2_27) invisible(.Call(wrap__internal_lmutils_fd_into_file, file, fd, libc_2_27))
 
 #' @export
-internal_lmutils_file_into_fd <- function(file, fd) invisible(.Call(wrap__internal_lmutils_file_into_fd, file, fd))
+internal_lmutils_file_into_fd <- function(file, fd, libc_2_27) invisible(.Call(wrap__internal_lmutils_file_into_fd, file, fd, libc_2_27))
 
 #' DEPRECATED
 #' Convert files from one format to another.
