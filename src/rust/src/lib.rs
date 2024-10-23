@@ -32,6 +32,8 @@ impl Mat {
     /// `data` is a matrix convertable object.
     /// @export
     pub fn new(data: Robj) -> Result<Self> {
+        init();
+
         Ok(Self::Own(lmutils::Matrix::from_robj(data)?))
     }
 
