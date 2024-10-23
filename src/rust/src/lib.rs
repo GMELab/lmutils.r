@@ -1457,7 +1457,7 @@ pub fn internal_lmutils_fd_into_file(file: &str, fd: i32, libc_2_27: bool) {
 /// @export
 #[extendr]
 #[allow(unreachable_code)]
-pub fn internal_lmutils_file_into_fd(file: &str, fd: Robj) {
+pub fn internal_lmutils_file_into_fd(file: &str, fd: Robj, libc_2_27: bool) {
     init();
 
     #[cfg(unix)]
@@ -1468,7 +1468,16 @@ pub fn internal_lmutils_file_into_fd(file: &str, fd: Robj) {
         // read from the file and write to the fd in rkyv format
         let file = lmutils::File::from_str(file).unwrap();
         let mut matrix = file.read().unwrap();
-        let fd = unsafe { std::fs::File::from_raw_fd(fd.as_real().unwrap() as i32) };
+        let fd = if libc_2_27 {
+            unsafe { std::fs::File::from_raw_fd(fd.as_real().unwrap() as i32) }
+        } else {
+            std::fs::File::open(format!(
+                "/proc/{}/fd/{}",
+                std::process::id(),
+                fd.as_real().unwrap() as i32
+            ))
+            .unwrap()
+        };
         lmutils::File::new("", lmutils::FileType::Rkyv, false)
             .write_matrix_to_writer(fd, &mut matrix)
             .unwrap();
