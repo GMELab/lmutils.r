@@ -134,16 +134,7 @@ impl Mat {
     /// `column` is the name or index of the column to remove.
     /// @export
     pub fn remove_column(&mut self, column: Robj) -> Result<Ptr> {
-        if column.is_integer() {
-            let column = column.as_integer().unwrap() as usize - 1;
-            self.t_remove_column(column);
-        } else if column.is_string() {
-            let column = column.as_str().unwrap();
-            self.t_remove_column_by_name(column);
-        } else {
-            return Err("column must be a string or integer".into());
-        }
-        Ok(self.ptr())
+        self.remove_columns(column)
     }
 
     /// Remove a column from this matrix by name if it exists.
