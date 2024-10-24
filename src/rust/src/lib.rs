@@ -99,35 +99,50 @@ impl Mat {
     }
 
     /// Remove columns from this matrix.
-    /// `columns` is a numeric vector of column indices to remove (1-based).
+    /// `columns` is a numeric vector of column indices to remove (1-based) or column names.
     /// @export
     pub fn remove_columns(&mut self, columns: Robj) -> Result<Ptr> {
         let columns = if columns.is_integer() {
-            columns
+            let columns = columns
                 .as_integer_slice()
                 .unwrap()
                 .iter()
                 .map(|x| *x as usize - 1)
-                .collect::<HashSet<_>>()
+                .collect::<HashSet<_>>();
+            self.t_remove_columns(columns);
         } else if columns.is_real() {
-            columns
+            let columns = columns
                 .as_real_slice()
                 .unwrap()
                 .iter()
                 .map(|x| *x as usize - 1)
-                .collect::<HashSet<_>>()
+                .collect::<HashSet<_>>();
+            self.t_remove_columns(columns);
+        } else if columns.is_string() {
+            let columns = columns
+                .as_str_iter()
+                .map(|x| x.to_string())
+                .collect::<HashSet<_>>();
+            self.t_remove_columns_by_name(columns);
         } else {
             return Err("columns must be an integer vector".into());
         };
-        self.t_remove_columns(columns);
         Ok(self.ptr())
     }
 
     /// Remove a column from this matrix by name.
-    /// `column` is the name of the column to remove.
+    /// `column` is the name or index of the column to remove.
     /// @export
-    pub fn remove_column(&mut self, column: &str) -> Result<Ptr> {
-        self.t_remove_column_by_name(column);
+    pub fn remove_column(&mut self, column: Robj) -> Result<Ptr> {
+        if column.is_integer() {
+            let column = column.as_integer().unwrap() as usize - 1;
+            self.t_remove_column(column);
+        } else if column.is_string() {
+            let column = column.as_str().unwrap();
+            self.t_remove_column_by_name(column);
+        } else {
+            return Err("column must be a string or integer".into());
+        }
         Ok(self.ptr())
     }
 
@@ -1501,6 +1516,20 @@ pub fn enable_predicted() {
     std::env::set_var("LMUTILS_ENABLE_PREDICTED", "1");
 }
 
+/// Ignore errors in core parallel operations.
+/// @export
+#[extendr]
+pub fn ignore_core_parallel_errors() {
+    std::env::set_var("LMUTILS_IGNORE_CORE_PARALLEL_ERRORS", "1");
+}
+
+/// Don't ignore errors in core parallel operations.
+/// @export
+#[extendr]
+pub fn dont_ignore_core_parallel_errors() {
+    std::env::set_var("LMUTILS_IGNORE_CORE_PARALLEL_ERRORS", "0");
+}
+
 // END CONFIG FUNCTIONS
 
 // INTERNAL FUNCTIONS
@@ -1732,6 +1761,8 @@ extendr_module! {
     fn set_num_worker_threads;
     fn disable_predicted;
     fn enable_predicted;
+    fn ignore_core_parallel_errors;
+    fn dont_ignore_core_parallel_errors;
 
     fn internal_lmutils_fd_into_file;
     fn internal_lmutils_file_into_fd;
