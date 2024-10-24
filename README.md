@@ -488,6 +488,14 @@ Remove columns with all identical entries.
 mat$remove_identical_columns()
 ```
 
+### `lmutils::Mat$subset_columns`
+
+Subset the matrix to only include the given columns (1-based indices or names).
+
+```r
+mat$subset_columns(c(1, 2, 3))
+```
+
 ## Matrix Functions
 
 ### `lmutils::save`
