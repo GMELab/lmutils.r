@@ -427,6 +427,38 @@ impl Mat {
         self.t_remove_identical_columns();
         Ok(self.ptr())
     }
+
+    /// Subset this matrix by the given columns.
+    /// `columns` is a numeric vector of column indices to keep (1-based) or column names.
+    /// @export
+    pub fn subset_columns(&mut self, columns: Robj) -> Result<Ptr> {
+        let columns = if columns.is_integer() {
+            let columns = columns
+                .as_integer_slice()
+                .unwrap()
+                .iter()
+                .map(|x| *x as usize - 1)
+                .collect::<HashSet<_>>();
+            self.t_subset_columns(columns);
+        } else if columns.is_real() {
+            let columns = columns
+                .as_real_slice()
+                .unwrap()
+                .iter()
+                .map(|x| *x as usize - 1)
+                .collect::<HashSet<_>>();
+            self.t_subset_columns(columns);
+        } else if columns.is_string() {
+            let columns = columns
+                .as_str_iter()
+                .map(|x| x.to_string())
+                .collect::<HashSet<_>>();
+            self.t_subset_columns_by_name(columns);
+        } else {
+            return Err("columns must be an integer vector".into());
+        };
+        Ok(self.ptr())
+    }
 }
 
 // END MATRIX OBJECT
@@ -588,32 +620,37 @@ pub fn linear_regression(data: Robj, outcomes: Robj) -> Result<Robj> {
     let outcome_names = outcomes
         .colnames()?
         .map(|x| x.into_iter().map(|x| x.to_string()).collect::<Vec<_>>());
-    let res = parallelize(data, |_, (data_name, mut data)| {
-        let data = data.as_mat_ref()?;
-        Ok(outcomes
-            .as_mat_ref_loaded()
-            .col_iter()
-            .enumerate()
-            .map(|(i, outcome)| {
-                let res =
-                    lmutils::linear_regression(data.as_ref(), outcome.try_as_slice().unwrap());
-                Res {
-                    slopes: res.slopes().to_vec(),
-                    intercept: res.intercept(),
-                    predicted: res.predicted().to_vec(),
-                    r2: res.r2(),
-                    adj_r2: res.adj_r2(),
-                    data: data_name.clone(),
-                    outcome: outcome_names
-                        .as_deref()
-                        .map(|x| x[i].to_string())
-                        .unwrap_or_else(|| (i + 1).to_string()),
-                    n: data.nrows(),
-                    m: data.ncols(),
-                }
-            })
-            .collect::<Vec<_>>())
-    })?
+    let output_size = data.len() * outcomes.ncols()?;
+    let res = lmutils::core_parallelize::<_, _, _, extendr_api::Error>(
+        data,
+        Some(output_size),
+        |_, (data_name, data)| {
+            let data = data.as_mat_ref()?;
+            Ok(outcomes
+                .as_mat_ref_loaded()
+                .col_iter()
+                .enumerate()
+                .map(|(i, outcome)| {
+                    let res =
+                        lmutils::linear_regression(data.as_ref(), outcome.try_as_slice().unwrap());
+                    Res {
+                        slopes: res.slopes().to_vec(),
+                        intercept: res.intercept(),
+                        predicted: res.predicted().to_vec(),
+                        r2: res.r2(),
+                        adj_r2: res.adj_r2(),
+                        data: data_name.clone(),
+                        outcome: outcome_names
+                            .as_deref()
+                            .map(|x| x[i].to_string())
+                            .unwrap_or_else(|| (i + 1).to_string()),
+                        n: data.nrows(),
+                        m: data.ncols(),
+                    }
+                })
+                .collect::<Vec<_>>())
+        },
+    )
     .into_iter()
     .flatten()
     .collect::<Vec<_>>();
