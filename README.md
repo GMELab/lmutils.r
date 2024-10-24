@@ -49,6 +49,7 @@
   - [`lmutils::save_dir`](#lmutilssave_dir)
   - [`lmutils::calculate_r2`](#lmutilscalculate_r2)
   - [`lmutils::column_p_values`](#lmutilscolumn_p_values)
+  - [`lmutils::linear_regression`](#lmutilslinear_regression)
   - [`lmutils::combine_vectors`](#lmutilscombine_vectors)
   - [`lmutils::combine_rows`](#lmutilscombine_rows)
   - [`lmutils::remove_rows`](#lmutilsremove_rows)
@@ -545,6 +546,20 @@ results <- lmutils::column_p_values(
 )
 ```
 
+### `lmutils::linear_regression`
+
+Perform a linear regression between each data element and each outcome column.
+- `data` is a list of matrix convertable objects.
+- `outcomes` is a single matrix convertable object.
+The function returns a list of data frames with columns `slopes`, `intercept`, `r2`, `adj_r2`, `data`, `outcome`, `n`, `m`, and `predicted` (if enabled).
+
+```r
+results <- lmutils::linear_regression(
+    c("block1.csv", "block2.rkyv.gz"),
+    "outcomes1.RData",
+)
+```
+
 ### `lmutils::combine_vectors`
 
 Combine a list of double vectors into a single matrix using the vectors as columns.
@@ -838,9 +853,9 @@ lmutils::var(
 
 ## Configuration
 
-`lmutils` exposes three global config options that can be set using environment variables or the `lmutils` package functions:
+`lmutils` exposes a number global config options that can be set using environment variables or the `lmutils` package functions:
 
 - `LMUTILS_LOG`/`lmutils::set_log_level` to set the log level (default: `info`). Available log levels in order of increasing verbosity are `off`, `error`, `warn`, `info`, `debug`, and `trace`.
 - `LMUTILS_CORE_PARALLELISM`/`lmutils::set_core_parallelism` to set the core parallelism (default: `16`). This is the number of primary operations to run in parallel.
 - `LMUTILS_NUM_WORKER_THREADS`/`lmutils::set_num_worker_threads` to set the number of worker threads to use (default: `num_cpus::get() / 2`). This is the number of threads to use for parallel operations. Once an operation has been run, this value cannot be changed.
-- `LMUTILS_ENABLE_PREDICTED`/`lmutils::disabled_predicted`/`lmutils::enable_predicted` to enable the calculation of the predicted values in `lmutils::calculate_r2`.
+- `LMUTILS_ENABLE_PREDICTED`/`lmutils::disable_predicted`/`lmutils::enable_predicted` to enable the calculation of the predicted values in `lmutils::calculate_r2`.

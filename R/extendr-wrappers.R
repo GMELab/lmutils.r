@@ -38,6 +38,14 @@ calculate_r2 <- function(data, outcomes) .Call(wrap__calculate_r2, data, outcome
 #' @export
 column_p_values <- function(data, outcomes) .Call(wrap__column_p_values, data, outcomes)
 
+#' Compute a linear regression between each matrix in a list and a each column in another matrix.
+#' `data` is a list of matrix convertable objects.
+#' `outcomes` is a matrix convertable object.
+#' Returns a data frame with columns `slopes`, `intercept`, `predicted` (if enabled), `r2`,
+#' `adj_r2`, `data`, `outcome`, `n`, and `m`.
+#' @export
+linear_regression <- function(data, outcomes) .Call(wrap__linear_regression, data, outcomes)
+
 #' Combine a list of double vectors into a matrix.
 #' `data` is a list of double vectors.
 #' `out` is an output file name or `NULL` to return the matrix.

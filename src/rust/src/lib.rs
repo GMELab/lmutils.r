@@ -547,6 +547,84 @@ pub fn column_p_values(data: Robj, outcomes: Robj) -> Result<Robj> {
     .into_robj())
 }
 
+/// Compute a linear regression between each matrix in a list and a each column in another matrix.
+/// `data` is a list of matrix convertable objects.
+/// `outcomes` is a matrix convertable object.
+/// Returns a data frame with columns `slopes`, `intercept`, `predicted` (if enabled), `r2`,
+/// `adj_r2`, `data`, `outcome`, `n`, and `m`.
+/// @export
+#[extendr]
+pub fn linear_regression(data: Robj, outcomes: Robj) -> Result<Robj> {
+    let mut outcomes = matrix(outcomes)?;
+    let data = named_matrix_list(data)?;
+
+    struct Res {
+        slopes: Vec<f64>,
+        intercept: f64,
+        predicted: Vec<f64>,
+        r2: f64,
+        adj_r2: f64,
+        data: String,
+        outcome: String,
+        n: usize,
+        m: usize,
+    }
+
+    let outcome_names = outcomes
+        .colnames()?
+        .map(|x| x.into_iter().map(|x| x.to_string()).collect::<Vec<_>>());
+    let res = parallelize(data, |_, (data_name, mut data)| {
+        let data = data.as_mat_ref()?;
+        Ok(outcomes
+            .as_mat_ref_loaded()
+            .col_iter()
+            .enumerate()
+            .map(|(i, outcome)| {
+                let res =
+                    lmutils::linear_regression(data.as_ref(), outcome.try_as_slice().unwrap());
+                Res {
+                    slopes: res.slopes().to_vec(),
+                    intercept: res.intercept(),
+                    predicted: res.predicted().to_vec(),
+                    r2: res.r2(),
+                    adj_r2: res.adj_r2(),
+                    data: data_name.clone(),
+                    outcome: outcome_names
+                        .as_deref()
+                        .map(|x| x[i].to_string())
+                        .unwrap_or_else(|| (i + 1).to_string()),
+                    n: data.nrows(),
+                    m: data.ncols(),
+                }
+            })
+            .collect::<Vec<_>>())
+    })?
+    .into_iter()
+    .flatten()
+    .collect::<Vec<_>>();
+
+    let mut df = data_frame!(
+        slopes = res.iter().map(|_| 0).collect_robj(),
+        intercept = res.iter().map(|r| r.intercept).collect_robj(),
+        predicted = res.iter().map(|_| 0).collect_robj(),
+        r2 = res.iter().map(|r| r.r2).collect_robj(),
+        adj_r2 = res.iter().map(|r| r.adj_r2).collect_robj(),
+        data = res.iter().map(|r| r.data.clone()).collect_robj(),
+        outcome = res.iter().map(|r| r.outcome.clone()).collect_robj(),
+        n = res.iter().map(|r| r.n).collect_robj(),
+        m = res.iter().map(|r| r.m).collect_robj()
+    )
+    .as_list()
+    .unwrap();
+    // due to some weird stuff with the macro, we have to set the vector columns manually
+    let slopes = List::from_values(res.iter().map(|r| &r.slopes)).into_robj();
+    let predicted = List::from_values(res.iter().map(|r| &r.predicted)).into_robj();
+    df.set_elt(0, slopes).unwrap();
+    df.set_elt(2, predicted).unwrap();
+
+    Ok(df.into_robj())
+}
+
 /// Combine a list of double vectors into a matrix.
 /// `data` is a list of double vectors.
 /// `out` is an output file name or `NULL` to return the matrix.
@@ -1624,6 +1702,7 @@ extendr_module! {
     fn save_dir;
     fn calculate_r2;
     fn column_p_values;
+    fn linear_regression;
     fn combine_vectors;
     fn combine_rows;
     fn remove_rows;
