@@ -209,6 +209,14 @@ disable_predicted <- function() invisible(.Call(wrap__disable_predicted))
 #' @export
 enable_predicted <- function() invisible(.Call(wrap__enable_predicted))
 
+#' Ignore errors in core parallel operations.
+#' @export
+ignore_core_parallel_errors <- function() invisible(.Call(wrap__ignore_core_parallel_errors))
+
+#' Don't ignore errors in core parallel operations.
+#' @export
+dont_ignore_core_parallel_errors <- function() invisible(.Call(wrap__dont_ignore_core_parallel_errors))
+
 #' @export
 internal_lmutils_fd_into_file <- function(file, fd, libc_2_27) invisible(.Call(wrap__internal_lmutils_fd_into_file, file, fd, libc_2_27))
 
@@ -357,6 +365,8 @@ Mat$rename_column_if_exists <- function(old, new) .Call(wrap__Mat__rename_column
 Mat$remove_duplicate_columns <- function() .Call(wrap__Mat__remove_duplicate_columns, self)
 
 Mat$remove_identical_columns <- function() .Call(wrap__Mat__remove_identical_columns, self)
+
+Mat$subset_columns <- function(columns) .Call(wrap__Mat__subset_columns, self, columns)
 
 #' @rdname Mat
 #' @usage NULL

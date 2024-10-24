@@ -120,7 +120,7 @@ impl Mat {
             self.t_remove_columns(columns);
         } else if columns.is_string() {
             let columns = columns
-                .as_str_iter()
+                .as_str_iter().unwrap()
                 .map(|x| x.to_string())
                 .collect::<HashSet<_>>();
             self.t_remove_columns_by_name(columns);
@@ -442,6 +442,7 @@ impl Mat {
         } else if columns.is_string() {
             let columns = columns
                 .as_str_iter()
+                .unwrap()
                 .map(|x| x.to_string())
                 .collect::<HashSet<_>>();
             self.t_subset_columns_by_name(columns);
