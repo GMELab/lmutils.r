@@ -353,7 +353,7 @@ impl Mat {
                     Mat::Own(lmutils::Matrix::Owned(OwnedMatrix::new(0, 0, vec![], None))),
                 );
                 let ptr = ExternalPtr::new(slf);
-                ptr.into_robj().set_class(&["Mat"]).unwrap();
+                ptr.clone().into_robj().set_class(&["Mat"]).unwrap();
                 *m = Mat::Ref(ptr);
                 m.ptr()
             }
