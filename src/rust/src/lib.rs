@@ -102,7 +102,7 @@ impl Mat {
     /// `columns` is a numeric vector of column indices to remove (1-based) or column names.
     /// @export
     pub fn remove_columns(&mut self, columns: Robj) -> Result<Ptr> {
-        let columns = if columns.is_integer() {
+        if columns.is_integer() {
             let columns = columns
                 .as_integer_slice()
                 .unwrap()
@@ -120,7 +120,8 @@ impl Mat {
             self.t_remove_columns(columns);
         } else if columns.is_string() {
             let columns = columns
-                .as_str_iter().unwrap()
+                .as_str_iter()
+                .unwrap()
                 .map(|x| x.to_string())
                 .collect::<HashSet<_>>();
             self.t_remove_columns_by_name(columns);
@@ -423,7 +424,7 @@ impl Mat {
     /// `columns` is a numeric vector of column indices to keep (1-based) or column names.
     /// @export
     pub fn subset_columns(&mut self, columns: Robj) -> Result<Ptr> {
-        let columns = if columns.is_integer() {
+        if columns.is_integer() {
             let columns = columns
                 .as_integer_slice()
                 .unwrap()
