@@ -1,5 +1,6 @@
 #![allow(non_snake_case)]
 #![allow(deprecated)]
+#![allow(clippy::too_long_first_doc_paragraph)]
 mod utils;
 
 use core::panic;
@@ -1113,7 +1114,7 @@ impl<'a> Col<'a> {
             Col::Str(v) => v.iter().map(|s| Cmp::Str(s.to_string())).collect(),
             Col::Int(v) => v.iter().map(|i| Cmp::Int(*i)).collect(),
             Col::Real(v) => v.iter().map(|f| Cmp::Real(*f)).collect(),
-            Col::Logical(v) => v.iter().map(|b| Cmp::Int(b.inner() as i32)).collect(),
+            Col::Logical(v) => v.iter().map(|b| Cmp::Int(b.inner())).collect(),
         }
     }
 }
