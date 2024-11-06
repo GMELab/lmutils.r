@@ -1576,7 +1576,7 @@ pub fn internal_lmutils_fd_into_file(file: &str, fd: i32, libc_2_27: bool) {
         use std::os::fd::FromRawFd;
 
         std::env::set_var("LMUTILS_FD", "1");
-        // read from the fd in uncompressed rkyv and write to the file
+        // read from the fd in uncompressed mat and write to the file
         let file = lmutils::File::from_str(file).unwrap();
         // std::thread::sleep(std::time::Duration::from_secs(60));
         // let fd = unsafe { std::fs::File::from_raw_fd(fd) };
@@ -1586,7 +1586,7 @@ pub fn internal_lmutils_fd_into_file(file: &str, fd: i32, libc_2_27: bool) {
             std::fs::File::open(format!("/proc/{}/fd/{}", std::process::id(), fd)).unwrap()
         };
         // std::thread::sleep(std::time::Duration::from_secs(60));
-        let mut matrix = lmutils::File::new("", lmutils::FileType::Rkyv, false)
+        let mut matrix = lmutils::File::new("", lmutils::FileType::Mat, false)
             .read_from_reader(fd)
             .unwrap();
         file.write(&mut matrix).unwrap();
@@ -1606,19 +1606,19 @@ pub fn internal_lmutils_file_into_fd(file: &str, fd: Robj) {
         use std::os::fd::FromRawFd;
 
         std::env::set_var("LMUTILS_FD", "1");
-        // read from the file and write to the fd in rkyv format
+        // read from the file and write to the fd in mat format
         let file = lmutils::File::from_str(file).unwrap();
         let mut matrix = file.read().unwrap();
         trace!("file read");
         if fd.is_real() {
             let fd = unsafe { std::fs::File::from_raw_fd(fd.as_real().unwrap() as i32) };
-            lmutils::File::new("", lmutils::FileType::Rkyv, false)
+            lmutils::File::new("", lmutils::FileType::Mat, false)
                 .write_matrix_to_writer(fd, &mut matrix)
                 .unwrap();
             trace!("file written");
         } else {
             println!("{}", fd.as_str().unwrap());
-            lmutils::File::new(fd.as_str().unwrap(), lmutils::FileType::Rkyv, false)
+            lmutils::File::new(fd.as_str().unwrap(), lmutils::FileType::Mat, false)
                 .write(&mut matrix)
                 .unwrap();
             trace!("file written");
