@@ -10,7 +10,7 @@ else
 fi
 
 echo "LMUTILS:: Installing lmutils"
-R -e "install.packages('https://github.com/GMELab/lmutils.r/releases/download/latest/lmutils.r.tar.gz', repos = NULL)" > /dev/null
+R -e "install.packages('https://github.com/GMELab/lmutils.r/releases/latest/download/lmutils.r.tar.gz', repos = NULL)" > /dev/null
 if [ $? -eq 0 ]; then
     echo "LMUTILS:: lmutils is installed"
 else
