@@ -21,4 +21,5 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
+          repo_name=$(basename $(pwd))
           gh release upload "${GITHUB_REF_NAME}" "${repo_name}.tar.gz" --repo "${{ github.repository }}" --clobber
