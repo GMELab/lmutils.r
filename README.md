@@ -78,19 +78,10 @@
 
 ## Installation
 
-Requires the [Rust programming language](https://rust-lang.org).
-
-```sh 
-# select option 1, default installation
-curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
-```
-
-Then install the package using the following command:
+`lmutils` is not currently available on CRAN, but it can be installed on Linux with the following command. This will also install the [Rust programming language](https://rust-lang.org) which is required for `lmutils`.
 
 ```r
-install.packages("https://github.com/GMELab/lmutils.r/archive/refs/heads/master.tar.gz", repos=NULL) # use .zip for Windows
-# OR
-devtools::install_github("GMELab/lmutils.r")
+curl https://raw.githubusercontent.com/GMELab/lmutils.r/refs/heads/master/install.sh | sh
 ```
 
 ## Important Information
