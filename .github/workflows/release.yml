@@ -15,7 +15,7 @@ jobs:
       - name: Create archive
         run: |
           repo_name=$(basename $(pwd))
-          tar -czvf "${repo_name}.tar.gz" .
+          git archive --format=tar.gz --prefix="${repo_name}/" -o "${repo_name}.tar.gz" HEAD
 
       - name: Upload release asset
         env:
