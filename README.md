@@ -50,6 +50,7 @@
   - [`lmutils::calculate_r2`](#lmutilscalculate_r2)
   - [`lmutils::column_p_values`](#lmutilscolumn_p_values)
   - [`lmutils::linear_regression`](#lmutilslinear_regression)
+  - [`lmutils::logistic_regression`](#lmutilslogistic_regression)
   - [`lmutils::combine_vectors`](#lmutilscombine_vectors)
   - [`lmutils::combine_rows`](#lmutilscombine_rows)
   - [`lmutils::remove_rows`](#lmutilsremove_rows)
@@ -563,6 +564,20 @@ The function returns a list of data frames with columns `slopes`, `intercept`, `
 
 ```r
 results <- lmutils::linear_regression(
+    c("block1.csv", "block2.rkyv.gz"),
+    "outcomes1.RData",
+)
+```
+
+### `lmutils::logistic_regression`
+
+Perform a logistic regression between each data element and each outcome column.
+- `data` is a list of matrix convertable objects.
+- `outcomes` is a single matrix convertable object.
+The function returns a list of data frames with columns `slopes`, `intercept`, `r2`, `adj_r2`, `data`, `outcome`, `n`, `m`, and `predicted` (if enabled).
+
+```r
+results <- lmutils::logistic_regression(
     c("block1.csv", "block2.rkyv.gz"),
     "outcomes1.RData",
 )
