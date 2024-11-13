@@ -1,0 +1,22 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  create-archive:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+
+      - name: Create archive
+        run: |
+          git archive --format=tar.gz -o release.tar.gz ${{ github.ref }}
+
+      - name: Upload archive
+        uses: actions/upload-artifact@v2
+        with:
+          name: lmutils
