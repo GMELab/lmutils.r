@@ -103,13 +103,14 @@ devtools::install_github("GMELab/lmutils.r")
 
 ### File Types
 All files can be optionally compressed with `gzip`, `rdata` files are assumed to be compressed without looking for a `.gz` file extension (as is the standard in R).
-- `csv` (requires column headers)
-- `tsv` (requires column headers)
-- `txt` (requires column headers)
-- `json`
-- `cbor`
-- `rkyv`
-- `rdata`
+- `.mat` (recommended, custom binary format designed for matrices)
+- `.csv` (requires column headers)
+- `.tsv` (requires column headers)
+- `.txt` (requires column headers)
+- `.json`
+- `.cbor`
+- `.rkyv`
+- `.rdata`
 
 ## Introduction
 
@@ -215,7 +216,7 @@ Saves the matrix to a file.
 - `file` is the file name to write to.
 
 ```r
-mat$save("matrix1.rkyv.gz")
+mat$save("matrix1.mat.gz")
 ```
 
 ### `lmutils::Mat$combine_columns`
@@ -508,7 +509,7 @@ Saves a list of matrix convertable objects to files.
 ```r
 lmutils::save(
     list("file1.csv", matrix(1:9, nrow=3), 1:3, data.frame(a=1:3, b=4:6)),
-    c("file1.json", "file2.rkyv.gz", "file3.csv", "file4.rdata"),
+    c("file1.json", "file2.mat.gz", "file3.csv", "file4.rdata"),
 )
 ```
 
@@ -523,7 +524,7 @@ Recursively converts a directory of files to the selected file type.
 lmutils::save_dir(
     "data",
     "converted_data", # or NULL
-    "rkyv.gz",
+    "mat.gz",
 )
 ```
 
@@ -536,7 +537,7 @@ Returns a data frame with columns `r2`, `adj_r2`, `data`, `outcome`, `n`, `m`, a
 
 ```r
 results <- lmutils::calculate_r2(
-    c("block1.csv", "block2.rkyv.gz"),
+    c("block1.csv", "block2.mat.gz"),
     "outcomes1.RData",
 )
 ```
@@ -550,7 +551,7 @@ The function returns a data frame with columns `p_value`, `beta`, `intercept`, `
 
 ```r
 results <- lmutils::column_p_values(
-    c("block1.csv", "block2.rkyv.gz"),
+    c("block1.csv", "block2.mat.gz"),
     "outcomes1.RData",
 )
 ```
@@ -564,7 +565,7 @@ The function returns a list of data frames with columns `slopes`, `intercept`, `
 
 ```r
 results <- lmutils::linear_regression(
-    c("block1.csv", "block2.rkyv.gz"),
+    c("block1.csv", "block2.mat.gz"),
     "outcomes1.RData",
 )
 ```
@@ -578,7 +579,7 @@ The function returns a list of data frames with columns `slopes`, `intercept`, `
 
 ```r
 results <- lmutils::logistic_regression(
-    c("block1.csv", "block2.rkyv.gz"),
+    c("block1.csv", "block2.mat.gz"),
     "outcomes1.RData",
 )
 ```
@@ -647,7 +648,7 @@ Multiplies two matrices. Equivalent to `a %*% b`.
 ```r
 lmutils::mul(
     "matrix1.csv",
-    "matrix2.rkyv.gz",
+    "matrix2.mat.gz",
     "mul_matrix1_matrix2.csv",
 )
 ```
