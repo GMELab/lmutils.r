@@ -12,9 +12,6 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v2
 
-      - name: Set up GitHub CLI
-        uses: actions/setup-gh@v1
-
       - name: Create archive
         run: |
           repo_name=$(basename $(pwd))
