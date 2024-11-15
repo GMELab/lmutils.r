@@ -465,6 +465,8 @@ impl Mat {
 /// @export
 #[extendr]
 pub fn save(from: Robj, to: &[Rstr]) -> Result<()> {
+    init();
+
     let mut from = matrix_list(from)?;
     let to = to.iter().map(|x| x.as_str()).collect::<Vec<_>>();
     let to = to
@@ -525,6 +527,8 @@ pub fn save_dir(from: &str, to: Nullable<&str>, file_type: &str) -> Result<()> {
 /// @export
 #[extendr]
 pub fn calculate_r2(data: Robj, outcomes: Robj) -> Result<Robj> {
+    init();
+
     let mut outcomes = matrix(outcomes)?;
     outcomes.into_owned()?;
     let data = named_matrix_list(data)?;
@@ -565,6 +569,8 @@ pub fn calculate_r2(data: Robj, outcomes: Robj) -> Result<Robj> {
 /// @export
 #[extendr]
 pub fn column_p_values(data: Robj, outcomes: Robj) -> Result<Robj> {
+    init();
+
     let outcomes = matrix(outcomes)?;
     let data = named_matrix_list(data)?;
     let (data_names, data): (Vec<_>, Vec<_>) = data.into_iter().unzip();
@@ -596,6 +602,8 @@ pub fn column_p_values(data: Robj, outcomes: Robj) -> Result<Robj> {
 /// @export
 #[extendr]
 pub fn linear_regression(data: Robj, outcomes: Robj) -> Result<Robj> {
+    init();
+
     let mut outcomes = matrix(outcomes)?;
     let data = named_matrix_list(data)?;
 
@@ -679,6 +687,8 @@ pub fn linear_regression(data: Robj, outcomes: Robj) -> Result<Robj> {
 /// @export
 #[extendr]
 pub fn logistic_regression(data: Robj, outcomes: Robj) -> Result<Robj> {
+    init();
+
     let mut outcomes = matrix(outcomes)?;
     let data = named_matrix_list(data)?;
 
@@ -762,6 +772,8 @@ pub fn logistic_regression(data: Robj, outcomes: Robj) -> Result<Robj> {
 /// @export
 #[extendr]
 pub fn combine_vectors(data: List, out: Nullable<&str>) -> Result<Nullable<RMatrix<f64>>> {
+    init();
+
     let ncols = data.len();
     let nrows = data
         .iter()
@@ -809,6 +821,8 @@ pub fn combine_vectors(data: List, out: Nullable<&str>) -> Result<Nullable<RMatr
 /// @export
 #[extendr]
 pub fn combine_rows(data: List, out: Nullable<&str>) -> Result<Nullable<RMatrix<f64>>> {
+    init();
+
     fn first_ncols(data: &Robj) -> usize {
         if data.is_list() {
             data.as_list()
@@ -905,6 +919,8 @@ pub fn combine_rows(data: List, out: Nullable<&str>) -> Result<Nullable<RMatrix<
 /// @export
 #[extendr]
 pub fn remove_rows(data: Robj, rows: Robj, out: Robj) -> Result<Robj> {
+    init();
+
     let rows = if rows.is_integer() {
         rows.as_integer_slice()
             .unwrap()
@@ -932,6 +948,8 @@ pub fn remove_rows(data: Robj, rows: Robj, out: Robj) -> Result<Robj> {
 /// @export
 #[extendr]
 pub fn crossprod(data: Robj, out: Nullable<Robj>) -> Result<Robj> {
+    init();
+
     maybe_mutating_return(data, out, |mut data| {
         let m = data.as_mat_ref()?;
         let m = m.transpose() * m;
@@ -946,6 +964,8 @@ pub fn crossprod(data: Robj, out: Nullable<Robj>) -> Result<Robj> {
 /// @export
 #[extendr]
 pub fn mul(a: Robj, b: Robj, out: Nullable<Robj>) -> Result<Robj> {
+    init();
+
     maybe_mutating_return(a, out, |mut a| {
         let mut b = matrix(b)?;
         let m = a.as_mat_ref()? * b.as_mat_ref()?;
@@ -959,6 +979,8 @@ pub fn mul(a: Robj, b: Robj, out: Nullable<Robj>) -> Result<Robj> {
 /// @export
 #[extendr]
 pub fn load(obj: Robj) -> Result<Robj> {
+    init();
+
     maybe_return_paired(obj, ().into(), Ok)
 }
 
@@ -970,6 +992,8 @@ pub fn load(obj: Robj) -> Result<Robj> {
 /// @export
 #[extendr]
 pub fn match_rows(data: Robj, with: Robj, by: &str, out: Robj) -> Result<Robj> {
+    init();
+
     let with = if with.is_integer() {
         with.as_integer_slice()
             .unwrap()
@@ -1030,6 +1054,8 @@ pub fn match_rows_dir(from: &str, to: &str, with: &[f64], by: &str) -> Result<()
 /// @export
 #[extendr]
 pub fn dedup(data: Robj, by: &str, out: Robj) -> Result<Robj> {
+    init();
+
     maybe_return_paired(data, out, |mut data| {
         data.dedup_by_column_name(by)?;
         Ok(data)
@@ -1086,6 +1112,8 @@ pub fn new_column_from_regex(
 /// @export
 #[extendr]
 pub fn map_from_pairs(names: &[Rstr], values: &[Rstr]) -> Result<Robj> {
+    init();
+
     let mut map = HashMap::new();
     for (name, value) in names.iter().zip(values.iter()).rev() {
         map.insert(name.as_str(), value.as_str());
@@ -1101,6 +1129,8 @@ fn new_column_from_map_aux(
     column: Vec<&str>,
     new_column: &str,
 ) -> Result<Robj> {
+    init();
+
     let column = column
         .par_iter()
         .map(|s| {
@@ -1123,6 +1153,8 @@ fn new_column_from_map_aux(
 /// @export
 #[extendr]
 pub fn new_column_from_map(df: List, column: &str, values: List, new_column: &str) -> Result<Robj> {
+    init();
+
     let (_, column) = df
         .iter()
         .find(|(n, _)| *n == column)
@@ -1152,6 +1184,8 @@ pub fn new_column_from_map_pairs(
     values: &[Rstr],
     new_column: &str,
 ) -> Result<Robj> {
+    init();
+
     let (_, column) = df
         .iter()
         .find(|(n, _)| *n == column)
@@ -1211,6 +1245,8 @@ impl<'a> Col<'a> {
 /// @export
 #[extendr]
 pub fn df_sort_asc(df: List, columns: &[Rstr]) -> Result<Robj> {
+    init();
+
     let mut names = df.iter().map(|(n, r)| (n, Par(r))).collect::<Vec<_>>();
     let cols = columns
         .iter()
@@ -1321,6 +1357,8 @@ impl PartialEq for Cmp {
 /// @export
 #[extendr]
 pub fn df_split(df: List, by: &str) -> Result<Robj> {
+    init();
+
     df_sort_asc(df.clone(), &[by.into()])?;
     let (_, col) = df
         .iter()
@@ -1432,6 +1470,8 @@ pub fn df_split(df: List, by: &str) -> Result<Robj> {
 /// @export
 #[extendr]
 pub fn df_combine(data: Robj) -> Result<Robj> {
+    init();
+
     fn first_ncols(data: &Robj) -> Robj {
         if data.is_list() {
             let l = data.as_list().unwrap();
@@ -1546,6 +1586,8 @@ pub fn df_combine(data: Robj) -> Result<Robj> {
 /// @export
 #[extendr]
 pub fn compute_r2(actual: &[f64], predicted: &[f64]) -> Result<f64> {
+    init();
+
     Ok(lmutils::compute_r2(actual, predicted))
 }
 
@@ -1554,6 +1596,8 @@ pub fn compute_r2(actual: &[f64], predicted: &[f64]) -> Result<f64> {
 /// @export
 #[extendr]
 pub fn mean(x: &[f64]) -> f64 {
+    init();
+
     lmutils::mean(x)
 }
 
@@ -1562,6 +1606,8 @@ pub fn mean(x: &[f64]) -> f64 {
 /// @export
 #[extendr]
 pub fn median(x: &[f64]) -> f64 {
+    init();
+
     let mut sorted = x.to_vec();
     sorted.sort_unstable_by(|a, b| a.partial_cmp(b).unwrap());
     let len = sorted.len();
@@ -1577,6 +1623,8 @@ pub fn median(x: &[f64]) -> f64 {
 /// @export
 #[extendr]
 pub fn sd(x: &[f64]) -> f64 {
+    init();
+
     lmutils::variance(x).sqrt()
 }
 
@@ -1585,6 +1633,8 @@ pub fn sd(x: &[f64]) -> f64 {
 /// @export
 #[extendr]
 pub fn var(x: &[f64]) -> f64 {
+    init();
+
     lmutils::variance(x)
 }
 
@@ -1753,6 +1803,8 @@ pub fn save_matrix(mat: Robj, out: &[Rstr]) -> Result<()> {
 #[extendr]
 #[deprecated]
 pub fn to_matrix(df: Robj, out: Nullable<Robj>) -> Result<Robj> {
+    init();
+
     maybe_mutating_return(df, out, Ok)
 }
 
@@ -1764,6 +1816,8 @@ pub fn to_matrix(df: Robj, out: Nullable<Robj>) -> Result<Robj> {
 #[extendr]
 #[deprecated]
 pub fn standardize(data: Robj, out: Robj) -> Result<Robj> {
+    init();
+
     maybe_return_paired(data, out, |mut data| {
         data.standardize_columns()?;
         Ok(data)
@@ -1780,6 +1834,8 @@ pub fn standardize(data: Robj, out: Robj) -> Result<Robj> {
 #[extendr]
 #[deprecated]
 pub fn to_matrix_dir(from: &str, to: Nullable<&str>, file_type: &str) -> Result<()> {
+    init();
+
     save_dir(from, to, file_type)
 }
 
@@ -1792,6 +1848,8 @@ pub fn to_matrix_dir(from: &str, to: Nullable<&str>, file_type: &str) -> Result<
 #[extendr]
 #[deprecated]
 pub fn extend_matrices(data: Robj, out: Nullable<Robj>) -> Result<Nullable<Robj>> {
+    init();
+
     maybe_return_vec(data, out, |mut first, mut data| {
         first.combine_rows(data.as_mut_slice())?;
         Ok(first)
@@ -1818,6 +1876,8 @@ pub fn set_num_main_threads(num: u32) {
 #[extendr]
 #[deprecated]
 pub fn combine_matrices(data: Robj, out: Nullable<Robj>) -> Result<Nullable<Robj>> {
+    init();
+
     maybe_return_vec(data, out, |mut first, mut data| {
         first.combine_columns(data.as_mut_slice())?;
         Ok(first)
@@ -1830,6 +1890,8 @@ pub fn combine_matrices(data: Robj, out: Nullable<Robj>) -> Result<Nullable<Robj
 /// @export
 #[extendr]
 pub fn load_matrix(file: Robj) -> Result<Robj> {
+    init();
+
     maybe_return_paired(file, ().into(), Ok)
 }
 
