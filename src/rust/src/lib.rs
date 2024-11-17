@@ -785,7 +785,7 @@ pub fn combine_vectors(data: List, out: Nullable<&str>) -> Result<Nullable<RMatr
             } else if mat.nrows() != nrows {
                 panic!("all matrices must have the same number of rows");
             }
-            chunks.push((ncols, mat.nrows(), Par(v)));
+            chunks.push((ncols, mat.ncols(), Par(v)));
             ncols += mat.ncols();
         } else if v.is_real() {
             if nrows == 0 {
