@@ -2,14 +2,14 @@
 % Please edit documentation in R/extendr-wrappers.R
 \name{combine_vectors}
 \alias{combine_vectors}
-\title{Combine a list of double vectors into a matrix.
-\code{data} is a list of double vectors.
+\title{Combine a list of double vectors or matrices into a matrix.
+\code{data} is a list of double vectors or matrices.
 \code{out} is an output file name or \code{NULL} to return the matrix.}
 \usage{
 combine_vectors(data, out)
 }
 \description{
-Combine a list of double vectors into a matrix.
-\code{data} is a list of double vectors.
+Combine a list of double vectors or matrices into a matrix.
+\code{data} is a list of double vectors or matrices.
 \code{out} is an output file name or \code{NULL} to return the matrix.
 }

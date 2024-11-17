@@ -766,36 +766,63 @@ pub fn logistic_regression(data: Robj, outcomes: Robj) -> Result<Robj> {
     Ok(df.into_robj())
 }
 
-/// Combine a list of double vectors into a matrix.
-/// `data` is a list of double vectors.
+/// Combine a list of double vectors or matrices into a matrix.
+/// `data` is a list of double vectors or matrices.
 /// `out` is an output file name or `NULL` to return the matrix.
 /// @export
 #[extendr]
 pub fn combine_vectors(data: List, out: Nullable<&str>) -> Result<Nullable<RMatrix<f64>>> {
     init();
 
-    let ncols = data.len();
-    let nrows = data
-        .iter()
-        .map(|(_, v)| {
-            v.as_real_slice()
-                .expect("all vectors must be doubles")
-                .len()
-        })
-        .next()
-        .unwrap_or(0);
-    let data = data.iter().map(|(_, v)| Par(v)).collect::<Vec<_>>();
-    let mut mat = vec![MaybeUninit::uninit(); ncols * nrows];
-    mat.par_chunks_exact_mut(nrows)
-        .zip(data.into_par_iter())
-        .for_each(|(data, v)| {
-            let v = v.as_real_slice().expect("all vectors must be doubles");
-            if v.len() != nrows {
+    let mut nrows = 0;
+    let mut chunks = Vec::with_capacity(data.len());
+    let mut ncols = 0;
+    for (_, v) in data {
+        if v.is_matrix() {
+            let mat = v.as_matrix::<f64>().unwrap();
+            if nrows == 0 {
+                nrows = mat.nrows();
+            } else if mat.nrows() != nrows {
+                panic!("all matrices must have the same number of rows");
+            }
+            chunks.push((ncols, mat.nrows(), Par(v)));
+            ncols += mat.ncols();
+        } else if v.is_real() {
+            if nrows == 0 {
+                nrows = v.len();
+            } else if v.as_real_slice().unwrap().len() != nrows {
                 panic!("all vectors must have the same length");
             }
-            let v: &[MaybeUninit<f64>] = unsafe { std::mem::transmute(v) };
-            data.copy_from_slice(v);
-        });
+            chunks.push((ncols, 1, Par(v)));
+            ncols += 1;
+        } else {
+            panic!("data must be a list of double vectors or matrices");
+        }
+    }
+    if nrows == 0 {
+        panic!("data must contain at least one vector or matrix");
+    }
+    if chunks.is_empty() {
+        panic!("data must contain at least one vector or matrix");
+    }
+
+    let mat = vec![MaybeUninit::uninit(); ncols * nrows];
+    chunks.into_par_iter().for_each(|(start, ncols, v)| {
+        if v.is_matrix() {
+            let v = v.as_matrix::<f64>().unwrap();
+            let v = v.data();
+            let slice =
+                unsafe { std::slice::from_raw_parts_mut(mat.as_ptr().cast_mut(), mat.len()) };
+            slice[start * nrows..(start + ncols) * nrows]
+                .copy_from_slice(unsafe { std::mem::transmute::<&[f64], &[MaybeUninit<f64>]>(v) });
+        } else if v.is_real() {
+            let v = v.as_real_slice().unwrap();
+            let slice =
+                unsafe { std::slice::from_raw_parts_mut(mat.as_ptr().cast_mut(), mat.len()) };
+            slice[start * nrows..(start + ncols) * nrows]
+                .copy_from_slice(unsafe { std::mem::transmute::<&[f64], &[MaybeUninit<f64>]>(v) });
+        }
+    });
 
     let mut mat = Matrix::Owned(OwnedMatrix::new(
         nrows,

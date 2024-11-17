@@ -38,7 +38,7 @@ calculate_r2 <- function(data, outcomes) .Call(wrap__calculate_r2, data, outcome
 #' @export
 column_p_values <- function(data, outcomes) .Call(wrap__column_p_values, data, outcomes)
 
-#' Compute a linear regression between each matrix in a list and a each column in another matrix.
+#' Compute a linear regression between each matrix in a list and each column in another matrix.
 #' `data` is a list of matrix convertable objects.
 #' `outcomes` is a matrix convertable object.
 #' Returns a data frame with columns `slopes`, `intercept`, `predicted` (if enabled), `r2`,
@@ -46,8 +46,16 @@ column_p_values <- function(data, outcomes) .Call(wrap__column_p_values, data, o
 #' @export
 linear_regression <- function(data, outcomes) .Call(wrap__linear_regression, data, outcomes)
 
-#' Combine a list of double vectors into a matrix.
-#' `data` is a list of double vectors.
+#' Compute a logistic regression between each matrix in a list and each column in another matrix.
+#' `data` is a list of matrix convertable objects.
+#' `outcomes` is a matrix convertable object.
+#' Returns a data frame with columns `slopes`, `intercept`, `predicted` (if enabled), `r2`,
+#' `adj_r2`, `data`, `outcome`, `n`, and `m`.
+#' @export
+logistic_regression <- function(data, outcomes) .Call(wrap__logistic_regression, data, outcomes)
+
+#' Combine a list of double vectors or matrices into a matrix.
+#' `data` is a list of double vectors or matrices.
 #' `out` is an output file name or `NULL` to return the matrix.
 #' @export
 combine_vectors <- function(data, out) .Call(wrap__combine_vectors, data, out)
