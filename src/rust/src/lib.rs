@@ -789,7 +789,7 @@ pub fn combine_vectors(data: List, out: Nullable<&str>) -> Result<Nullable<RMatr
             ncols += mat.ncols();
         } else if v.is_real() {
             if nrows == 0 {
-                nrows = v.len();
+                nrows = v.as_real_slice().unwrap().len();
             } else if v.as_real_slice().unwrap().len() != nrows {
                 panic!("all vectors must have the same length");
             }
