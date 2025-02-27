@@ -11,7 +11,11 @@ export TMPDIR=$(mktemp -d --tmpdir=$(pwd))
 # install rust if not installed
 if [ -f $HOME/.cargo/env ]; then
     echo "LMUTILS:: Rust is already installed"
-    rustup update
+    if [ $verbose -eq 1 ]; then
+        rustup update
+    else
+        rustup update > /dev/null
+    fi
     echo "LMUTILS:: Rust is updated"
 else
     echo "LMUTILS:: Rust not found, installing"
@@ -50,6 +54,9 @@ else
     exit 1
 fi
 # if not exists, add $HOME/.lmutils to .libPaths()
+if [ ! -f $HOME/.Rprofile ]; then
+    touch $HOME/.Rprofile
+fi
 if ! grep -q "$HOME/.lmutils" $HOME/.Rprofile; then
     echo ".libPaths(c('$HOME/.lmutils', .libPaths()))" >> $HOME/.Rprofile
 fi
