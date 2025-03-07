@@ -23,7 +23,7 @@ echo "LMUTILS:: Installing lmutils"
 if [ ! -d $HOME/.lmutils ]; then
     mkdir $HOME/.lmutils
 fi
-R -e "install.packages('https://github.com/GMELab/lmutils.r/releases/latest/download/lmutils.r.tar.gz', repos = NULL, lib = '$HOME/.lmutils')" > /dev/null
+R --vanilla -e "install.packages('https://github.com/GMELab/lmutils.r/releases/latest/download/lmutils.r.tar.gz', repos = NULL, lib = '$HOME/.lmutils')" > /dev/null
 if [ $? -eq 0 ]; then
     echo "LMUTILS:: lmutils is now installed"
 else
