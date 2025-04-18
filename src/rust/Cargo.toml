@@ -10,11 +10,11 @@ name = "lmutils"
 [dependencies]
 extendr-api = { version = "0.6.0", features = ["either"] }
 rayon = "1.10.0"
-# lmutils = { version = "0.2", path = "../../../lmutils" }
+# lmutils = { version = "0.2", path = "../../../lmutils", features = ["r"] }
 lmutils = "0.2"
 # lmutils = { git = "https://github.com/mrvillage/lmutils" }
-flate2 = "1.0.30"
-faer = "0.19"
+# flate2 = "1.0.30"
+# faer = "0.19"
 num_cpus = "1.16.0"
 regex = "1.10.5"
 tracing = { version = "0.1.40", features = ["log"] }

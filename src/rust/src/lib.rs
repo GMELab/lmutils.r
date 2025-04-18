@@ -1652,7 +1652,7 @@ pub fn median(x: &[f64]) -> f64 {
 pub fn sd(x: &[f64]) -> f64 {
     init();
 
-    lmutils::variance(x).sqrt()
+    lmutils::variance(x, 1).sqrt()
 }
 
 /// Compute the variance of a numeric vector.
@@ -1662,7 +1662,7 @@ pub fn sd(x: &[f64]) -> f64 {
 pub fn var(x: &[f64]) -> f64 {
     init();
 
-    lmutils::variance(x)
+    lmutils::variance(x, 1)
 }
 
 // END OTHER FUNCTIONS
