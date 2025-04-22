@@ -12,7 +12,7 @@
 NULL
 
 #' Saves a list of matrix convertible objects to a character vector of file names.
-#' `from` is a list of matrix convertable objects.
+#' `from` is a list of matrix convertible objects.
 #' `to` is a character vector of file names to write to.
 #' @export
 save <- function(from, to) .Call(wrap__save, from, to)
@@ -25,30 +25,30 @@ save <- function(from, to) .Call(wrap__save, from, to)
 save_dir <- function(from, to, file_type) .Call(wrap__save_dir, from, to, file_type)
 
 #' Calculate R^2 and adjusted R^2 for a block and outcomes.
-#' `data` is a list of matrix convertable objects.
-#' `outcomes` is a matrix convertable object.
+#' `data` is a list of matrix convertible objects.
+#' `outcomes` is a matrix convertible object.
 #' Returns a data frame with columns `r2`, `adj_r2`, `data`, `outcome`, `n`, `m`, and `predicted`.
 #' @export
 calculate_r2 <- function(data, outcomes) .Call(wrap__calculate_r2, data, outcomes)
 
 #' Compute the p value of a linear regression between each pair of columns in two matrices.
-#' `data` is a list of matrix convertable objects.
-#' `outcomes` is a matrix convertable object.
+#' `data` is a list of matrix convertible objects.
+#' `outcomes` is a matrix convertible object.
 #' Returns a data frame with columns `p`, `beta`, `intercept`, `data`, `data_column`, and `outcome`.
 #' @export
 column_p_values <- function(data, outcomes) .Call(wrap__column_p_values, data, outcomes)
 
 #' Compute a linear regression between each matrix in a list and each column in another matrix.
-#' `data` is a list of matrix convertable objects.
-#' `outcomes` is a matrix convertable object.
+#' `data` is a list of matrix convertible objects.
+#' `outcomes` is a matrix convertible object.
 #' Returns a data frame with columns `slopes`, `intercept`, `predicted` (if enabled), `r2`,
 #' `adj_r2`, `data`, `outcome`, `n`, and `m`.
 #' @export
 linear_regression <- function(data, outcomes) .Call(wrap__linear_regression, data, outcomes)
 
 #' Compute a logistic regression between each matrix in a list and each column in another matrix.
-#' `data` is a list of matrix convertable objects.
-#' `outcomes` is a matrix convertable object.
+#' `data` is a list of matrix convertible objects.
+#' `outcomes` is a matrix convertible object.
 #' Returns a data frame with columns `slopes`, `intercept`, `predicted` (if enabled), `r2`,
 #' `adj_r2`, `data`, `outcome`, `n`, and `m`.
 #' @export
@@ -67,33 +67,33 @@ combine_vectors <- function(data, out) .Call(wrap__combine_vectors, data, out)
 combine_rows <- function(data, out) .Call(wrap__combine_rows, data, out)
 
 #' Remove rows from a matrix.
-#' `data` is a list of matrix convertable objects.
+#' `data` is a list of matrix convertible objects.
 #' `rows` is a vector of row indices to remove (1-based).
 #' `out` is a standard output file.
 #' @export
 remove_rows <- function(data, rows, out) .Call(wrap__remove_rows, data, rows, out)
 
 #' Computes the cross product of the matrix. Equivalent to `t(data) %*% data`.
-#' `data` is a list of matrix convertable objects.
+#' `data` is a list of matrix convertible objects.
 #' `out` is a standard output file.
 #' @export
 crossprod <- function(data, out) .Call(wrap__crossprod, data, out)
 
 #' Multiply two matrices. Equivalent to `a %*% b`.
-#' `a` is a list of matrix convertable objects.
-#' `b` is a list of matrix convertable objects.
+#' `a` is a list of matrix convertible objects.
+#' `b` is a list of matrix convertible objects.
 #' `out` is a standard output file.
 #' @export
 mul <- function(a, b, out) .Call(wrap__mul, a, b, out)
 
-#' Load a matrix convertable object into R.
-#' `obj` is a list of matrix convertable objects.
+#' Load a matrix convertible object into R.
+#' `obj` is a list of matrix convertible objects.
 #' If a single object is provided, the function will return the matrix directly, otherwise it will return a list of matrices.
 #' @export
 load <- function(obj) .Call(wrap__load, obj)
 
 #' Match the rows of a matrix to the values in a vector by a column.
-#' `data` is a list of matrix convertable objects.
+#' `data` is a list of matrix convertible objects.
 #' `with` is a numeric vector.
 #' `by` is the column to match by.
 #' `out` is a standard output file.
@@ -109,7 +109,7 @@ match_rows <- function(data, with, by, out) .Call(wrap__match_rows, data, with, 
 match_rows_dir <- function(from, to, with, by) .Call(wrap__match_rows_dir, from, to, with, by)
 
 #' Deduplicate a matrix by a column. The first occurrence of each value is kept.
-#' `data` is a list of matrix convertable objects.
+#' `data` is a list of matrix convertible objects.
 #' `by` is the column to deduplicate by.
 #' `out` is a standard output file.
 #' @export
@@ -192,6 +192,11 @@ sd <- function(x) .Call(wrap__sd, x)
 #' @export
 var <- function(x) .Call(wrap__var, x)
 
+#' Get the number of cores available.
+#' This is the number of threads that can be used for parallel operations.
+#' @export
+num_cores <- function() .Call(wrap__num_cores)
+
 #' Set the log level.
 #' `level` is the log level.
 #' @export
@@ -233,7 +238,7 @@ internal_lmutils_file_into_fd <- function(file, fd) invisible(.Call(wrap__intern
 
 #' DEPRECATED
 #' Convert files from one format to another.
-#' `from` is a list of matrix convertable objects.
+#' `from` is a list of matrix convertible objects.
 #' `to` is a list of file names to write to.
 #' @export
 convert_file <- function(from, to) .Call(wrap__convert_file, from, to)
@@ -375,6 +380,8 @@ Mat$remove_duplicate_columns <- function() .Call(wrap__Mat__remove_duplicate_col
 Mat$remove_identical_columns <- function() .Call(wrap__Mat__remove_identical_columns, self)
 
 Mat$subset_columns <- function(columns) .Call(wrap__Mat__subset_columns, self, columns)
+
+Mat$rename_columns_with_regex <- function(pattern, replacement) .Call(wrap__Mat__rename_columns_with_regex, self, pattern, replacement)
 
 #' @rdname Mat
 #' @usage NULL

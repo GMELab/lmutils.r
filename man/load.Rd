@@ -2,14 +2,14 @@
 % Please edit documentation in R/extendr-wrappers.R
 \name{load}
 \alias{load}
-\title{Load a matrix convertable object into R.
-\code{obj} is a list of matrix convertable objects.
+\title{Load a matrix convertible object into R.
+\code{obj} is a list of matrix convertible objects.
 If a single object is provided, the function will return the matrix directly, otherwise it will return a list of matrices.}
 \usage{
 load(obj)
 }
 \description{
-Load a matrix convertable object into R.
-\code{obj} is a list of matrix convertable objects.
+Load a matrix convertible object into R.
+\code{obj} is a list of matrix convertible objects.
 If a single object is provided, the function will return the matrix directly, otherwise it will return a list of matrices.
 }

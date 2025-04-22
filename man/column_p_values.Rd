@@ -3,15 +3,15 @@
 \name{column_p_values}
 \alias{column_p_values}
 \title{Compute the p value of a linear regression between each pair of columns in two matrices.
-\code{data} is a list of matrix convertable objects.
-\code{outcomes} is a matrix convertable object.
+\code{data} is a list of matrix convertible objects.
+\code{outcomes} is a matrix convertible object.
 Returns a data frame with columns \code{p}, \code{beta}, \code{intercept}, \code{data}, \code{data_column}, and \code{outcome}.}
 \usage{
 column_p_values(data, outcomes)
 }
 \description{
 Compute the p value of a linear regression between each pair of columns in two matrices.
-\code{data} is a list of matrix convertable objects.
-\code{outcomes} is a matrix convertable object.
+\code{data} is a list of matrix convertible objects.
+\code{outcomes} is a matrix convertible object.
 Returns a data frame with columns \code{p}, \code{beta}, \code{intercept}, \code{data}, \code{data_column}, and \code{outcome}.
 }

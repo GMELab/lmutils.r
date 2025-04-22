@@ -3,15 +3,15 @@
 \name{mul}
 \alias{mul}
 \title{Multiply two matrices. Equivalent to \code{a \%*\% b}.
-\code{a} is a list of matrix convertable objects.
-\code{b} is a list of matrix convertable objects.
+\code{a} is a list of matrix convertible objects.
+\code{b} is a list of matrix convertible objects.
 \code{out} is a standard output file.}
 \usage{
 mul(a, b, out)
 }
 \description{
 Multiply two matrices. Equivalent to \code{a \%*\% b}.
-\code{a} is a list of matrix convertable objects.
-\code{b} is a list of matrix convertable objects.
+\code{a} is a list of matrix convertible objects.
+\code{b} is a list of matrix convertible objects.
 \code{out} is a standard output file.
 }

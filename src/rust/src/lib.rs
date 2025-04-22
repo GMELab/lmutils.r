@@ -29,8 +29,8 @@ type Ptr = ExternalPtr<utils::Mat>;
 /// @export
 #[extendr]
 impl Mat {
-    /// Create a new matrix object from a matrix convertable object.
-    /// `data` is a matrix convertable object.
+    /// Create a new matrix object from a matrix convertible object.
+    /// `data` is a matrix convertible object.
     /// @export
     pub fn new(data: Robj) -> Result<Self> {
         init();
@@ -84,7 +84,7 @@ impl Mat {
     }
 
     /// Combine this matrix with other matrices by columns. (`cbind`)
-    /// `data` is a list of matrix convertable objects.
+    /// `data` is a list of matrix convertible objects.
     /// @export
     pub fn combine_columns(&mut self, data: Robj) -> Result<Ptr> {
         self.t_combine_columns(matrix_list(data)?);
@@ -92,7 +92,7 @@ impl Mat {
     }
 
     /// Combine this matrix with other matrices by rows. (`rbind`)
-    /// `data` is a list of matrix convertable objects.
+    /// `data` is a list of matrix convertible objects.
     /// @export
     pub fn combine_rows(&mut self, data: Robj) -> Result<Ptr> {
         self.t_combine_rows(matrix_list(data)?);
@@ -453,6 +453,15 @@ impl Mat {
         };
         Ok(self.ptr())
     }
+
+    /// Rename columns in this matrix with a regex.
+    /// `pattern` is the regex pattern to match.
+    /// `replacement` is the replacement string.
+    /// @export
+    pub fn rename_columns_with_regex(&mut self, pattern: &str, replacement: &str) -> Result<Ptr> {
+        self.t_rename_columns_with_regex(pattern, replacement);
+        Ok(self.ptr())
+    }
 }
 
 // END MATRIX OBJECT
@@ -460,7 +469,7 @@ impl Mat {
 // MATRIX FUNCTIONS
 
 /// Saves a list of matrix convertible objects to a character vector of file names.
-/// `from` is a list of matrix convertable objects.
+/// `from` is a list of matrix convertible objects.
 /// `to` is a character vector of file names to write to.
 /// @export
 #[extendr]
@@ -521,8 +530,8 @@ pub fn save_dir(from: &str, to: Nullable<&str>, file_type: &str) -> Result<()> {
 }
 
 /// Calculate R^2 and adjusted R^2 for a block and outcomes.
-/// `data` is a list of matrix convertable objects.
-/// `outcomes` is a matrix convertable object.
+/// `data` is a list of matrix convertible objects.
+/// `outcomes` is a matrix convertible object.
 /// Returns a data frame with columns `r2`, `adj_r2`, `data`, `outcome`, `n`, `m`, and `predicted`.
 /// @export
 #[extendr]
@@ -563,8 +572,8 @@ pub fn calculate_r2(data: Robj, outcomes: Robj) -> Result<Robj> {
 }
 
 /// Compute the p value of a linear regression between each pair of columns in two matrices.
-/// `data` is a list of matrix convertable objects.
-/// `outcomes` is a matrix convertable object.
+/// `data` is a list of matrix convertible objects.
+/// `outcomes` is a matrix convertible object.
 /// Returns a data frame with columns `p`, `beta`, `intercept`, `data`, `data_column`, and `outcome`.
 /// @export
 #[extendr]
@@ -595,8 +604,8 @@ pub fn column_p_values(data: Robj, outcomes: Robj) -> Result<Robj> {
 }
 
 /// Compute a linear regression between each matrix in a list and each column in another matrix.
-/// `data` is a list of matrix convertable objects.
-/// `outcomes` is a matrix convertable object.
+/// `data` is a list of matrix convertible objects.
+/// `outcomes` is a matrix convertible object.
 /// Returns a data frame with columns `slopes`, `intercept`, `predicted` (if enabled), `r2`,
 /// `adj_r2`, `data`, `outcome`, `n`, and `m`.
 /// @export
@@ -683,8 +692,8 @@ pub fn linear_regression(data: Robj, outcomes: Robj) -> Result<Robj> {
 }
 
 /// Compute a logistic regression between each matrix in a list and each column in another matrix.
-/// `data` is a list of matrix convertable objects.
-/// `outcomes` is a matrix convertable object.
+/// `data` is a list of matrix convertible objects.
+/// `outcomes` is a matrix convertible object.
 /// Returns a data frame with columns `slopes`, `intercept`, `predicted` (if enabled), `r2`,
 /// `adj_r2`, `data`, `outcome`, `n`, and `m`.
 /// @export
@@ -943,7 +952,7 @@ pub fn combine_rows(data: List, out: Nullable<&str>) -> Result<Nullable<RMatrix<
 }
 
 /// Remove rows from a matrix.
-/// `data` is a list of matrix convertable objects.
+/// `data` is a list of matrix convertible objects.
 /// `rows` is a vector of row indices to remove (1-based).
 /// `out` is a standard output file.
 /// @export
@@ -973,7 +982,7 @@ pub fn remove_rows(data: Robj, rows: Robj, out: Robj) -> Result<Robj> {
 }
 
 /// Computes the cross product of the matrix. Equivalent to `t(data) %*% data`.
-/// `data` is a list of matrix convertable objects.
+/// `data` is a list of matrix convertible objects.
 /// `out` is a standard output file.
 /// @export
 #[extendr]
@@ -988,8 +997,8 @@ pub fn crossprod(data: Robj, out: Nullable<Robj>) -> Result<Robj> {
 }
 
 /// Multiply two matrices. Equivalent to `a %*% b`.
-/// `a` is a list of matrix convertable objects.
-/// `b` is a list of matrix convertable objects.
+/// `a` is a list of matrix convertible objects.
+/// `b` is a list of matrix convertible objects.
 /// `out` is a standard output file.
 /// @export
 #[extendr]
@@ -1003,8 +1012,8 @@ pub fn mul(a: Robj, b: Robj, out: Nullable<Robj>) -> Result<Robj> {
     })
 }
 
-/// Load a matrix convertable object into R.
-/// `obj` is a list of matrix convertable objects.
+/// Load a matrix convertible object into R.
+/// `obj` is a list of matrix convertible objects.
 /// If a single object is provided, the function will return the matrix directly, otherwise it will return a list of matrices.
 /// @export
 #[extendr]
@@ -1015,7 +1024,7 @@ pub fn load(obj: Robj) -> Result<Robj> {
 }
 
 /// Match the rows of a matrix to the values in a vector by a column.
-/// `data` is a list of matrix convertable objects.
+/// `data` is a list of matrix convertible objects.
 /// `with` is a numeric vector.
 /// `by` is the column to match by.
 /// `out` is a standard output file.
@@ -1078,7 +1087,7 @@ pub fn match_rows_dir(from: &str, to: &str, with: &[f64], by: &str) -> Result<()
 }
 
 /// Deduplicate a matrix by a column. The first occurrence of each value is kept.
-/// `data` is a list of matrix convertable objects.
+/// `data` is a list of matrix convertible objects.
 /// `by` is the column to deduplicate by.
 /// `out` is a standard output file.
 /// @export
@@ -1808,7 +1817,7 @@ pub fn internal_lmutils_file_into_fd(file: &str, fd: Robj) {
 
 /// DEPRECATED
 /// Convert files from one format to another.
-/// `from` is a list of matrix convertable objects.
+/// `from` is a list of matrix convertible objects.
 /// `to` is a list of file names to write to.
 /// @export
 #[extendr]

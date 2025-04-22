@@ -74,6 +74,7 @@
   - [`lmutils::median`](#lmutilsmedian)
   - [`lmutils::sd`](#lmutilssd)
   - [`lmutils::var`](#lmutilsvar)
+  - [`lmutils::num_cores`](#lmutilsnum_cores)
 - [Configuration](#configuration)
 
 ## Installation
@@ -87,8 +88,8 @@ curl https://raw.githubusercontent.com/GMELab/lmutils.r/refs/heads/master/instal
 ## Important Information
 
 ### Terms
-- Matrix convertable object - a data frame, matrix, file name (to read from), a numeric column vector, or a `Mat` object.
-- List of matrix convertable objects - a list of matrix convertable objects, a character vector of file names (to read from), or a single matrix convertable object.
+- Matrix convertible object - a data frame, matrix, file name (to read from), a numeric column vector, or a `Mat` object.
+- List of matrix convertible objects - a list of matrix convertible objects, a character vector of file names (to read from), or a single matrix convertible object.
 - Standard output file - a character vector of file names matching the length of the inputs, or `NULL` to return the output. If a single input, not in a list, was provided, the output will not be in a list.
 - Join - an inner join means only rows that match in both matrices are kept, a left join means all rows in the left matrix are kept, a right join means all rows in the right matrix are kept.
 
@@ -124,7 +125,7 @@ mat$standardize_columns()
 m <- mat$r()
 ```
 
-You can also pass the object directly into functions that accept a matrix convertable object, it'll then be loaded automatically (with all the stored operations applied) only when needed.
+You can also pass the object directly into functions that accept a matrix convertible object, it'll then be loaded automatically (with all the stored operations applied) only when needed.
 
 ```r
 lmutils::calculate_r2(
@@ -170,7 +171,7 @@ lmutils::calculate_r2(list(mat, mat), mat)
 ### `lmutils::Mat$new`
 
 Creates a new `Mat` object.
-- `data` is a matrix convertable object.
+- `data` is a matrix convertible object.
 
 ```r
 mat <- lmutils::Mat$new("matrix1.csv")
@@ -213,7 +214,7 @@ mat$save("matrix1.mat.gz")
 ### `lmutils::Mat$combine_columns`
 
 Combines this matrix with other matrices by columns. (`cbind`)
-- `data` is a list of matrix convertable objects.
+- `data` is a list of matrix convertible objects.
 
 ```r
 mat$combine_columns("matrix2.csv")
@@ -222,7 +223,7 @@ mat$combine_columns("matrix2.csv")
 ### `lmutils::Mat$combine_rows`
 
 Combines this matrix with other matrices by rows. (`rbind`)
-- `data` is a list of matrix convertable objects.
+- `data` is a list of matrix convertible objects.
 
 ```r
 mat$combine_rows("matrix2.csv")
@@ -342,7 +343,7 @@ mat$match_to_by_name(c(1, 2, 3), "eid", 0)
 ### `lmutils::Mat$join`
 
 Join the matrix with another matrix by a column.
-- `other` is a matrix convertable object.
+- `other` is a matrix convertible object.
 - `by` is the column index (1-based) to join by.
 - `join` is the type of join to perform. 0 is inner, 1 is left, 2 is right, and 3 is full. If a row is not matched for a left or right join, it will error.
 
@@ -353,7 +354,7 @@ mat$join("matrix2.csv", 1, 0)
 ### `lmutils::Mat$join_by_name`
 
 Join the matrix with another matrix by a column name.
-- `other` is a matrix convertable object.
+- `other` is a matrix convertible object.
 - `by` is the column name to join by.
 - `join` is the type of join to perform. 0 is inner, 1 is left, 2 is right, and 3 is full. If a row is not matched for a left or right join, it will error.
 
@@ -489,12 +490,20 @@ Subset the matrix to only include the given columns (1-based indices or names).
 mat$subset_columns(c(1, 2, 3))
 ```
 
+### `lmutils::Mat$rename_columns_with_regex`
+
+Rename columns with a regex and a replacement string.
+
+```r
+mat$rename_columns_with_regex("[0-9]", "X")
+```
+
 ## Matrix Functions
 
 ### `lmutils::save`
 
-Saves a list of matrix convertable objects to files.
-- `from` is a list of matrix convertable objects.
+Saves a list of matrix convertible objects to files.
+- `from` is a list of matrix convertible objects.
 - `to` is a character vector of file names to write to.
 
 ```r
@@ -522,8 +531,8 @@ lmutils::save_dir(
 ### `lmutils::calculate_r2`
 
 Calculates the R^2 and adjusted R^2 values for blocks and outcomes.
-- `data` is a list of matrix convertable objects.
-- `outcomes` is a single matrix convertable object.
+- `data` is a list of matrix convertible objects.
+- `outcomes` is a single matrix convertible object.
 Returns a data frame with columns `r2`, `adj_r2`, `data`, `outcome`, `n`, `m`, and `predicted`.
 
 ```r
@@ -536,8 +545,8 @@ results <- lmutils::calculate_r2(
 ### `lmutils::column_p_values`
 
 Compute the p value of a linear regression between each pair of columns in data and outcomes.
-- `data` is a list of matrix convertable objects.
-- `outcomes` is a single matrix convertable object.
+- `data` is a list of matrix convertible objects.
+- `outcomes` is a single matrix convertible object.
 The function returns a data frame with columns `p_value`, `beta`, `intercept`, `data`, `data_column`, and `outcome`.
 
 ```r
@@ -550,8 +559,8 @@ results <- lmutils::column_p_values(
 ### `lmutils::linear_regression`
 
 Perform a linear regression between each data element and each outcome column.
-- `data` is a list of matrix convertable objects.
-- `outcomes` is a single matrix convertable object.
+- `data` is a list of matrix convertible objects.
+- `outcomes` is a single matrix convertible object.
 The function returns a list of data frames with columns `slopes`, `intercept`, `r2`, `adj_r2`, `data`, `outcome`, `n`, `m`, and `predicted` (if enabled).
 
 ```r
@@ -564,8 +573,8 @@ results <- lmutils::linear_regression(
 ### `lmutils::logistic_regression`
 
 Perform a logistic regression between each data element and each outcome column.
-- `data` is a list of matrix convertable objects.
-- `outcomes` is a single matrix convertable object.
+- `data` is a list of matrix convertible objects.
+- `outcomes` is a single matrix convertible object.
 The function returns a list of data frames with columns `slopes`, `intercept`, `r2`, `adj_r2`, `data`, `outcome`, `n`, `m`, and `predicted` (if enabled).
 
 ```r
@@ -604,7 +613,7 @@ lmutils::combine_rows(
 ### `lmutils::remove_rows`
 
 Removes rows from a matrix.
-- `data` is list of matrix convertable objects.
+- `data` is list of matrix convertible objects.
 - `rows` is a vector of row indices (1-based) to remove.
 - `out` is a standard output file.
 
@@ -619,7 +628,7 @@ lmutils::remove_rows(
 ### `lmutils::crossprod`
 
 Calculates the cross product of two matrices. Equivalent to `t(data) %*% data`.
-- `data` is a list of matrix convertable objects.
+- `data` is a list of matrix convertible objects.
 - `out` is a standard output file.
 
 ```r
@@ -632,8 +641,8 @@ lmutils::crossprod(
 ### `lmutils::mul`
 
 Multiplies two matrices. Equivalent to `a %*% b`.
-- `a` is a list of matrix convertable objects.
-- `b` is a list of matrix convertable objects.
+- `a` is a list of matrix convertible objects.
+- `b` is a list of matrix convertible objects.
 - `out` is a standard output file.
 
 ```r
@@ -646,8 +655,8 @@ lmutils::mul(
 
 ### `lmutils::load`
 
-Loads a matrix convertable object into R.
-- `obj` is a list matrix convertable objects.
+Loads a matrix convertible object into R.
+- `obj` is a list matrix convertible objects.
 If a single object is provided, the function will return the matrix directly, otherwise it will return a list of matrices.
 
 ```r
@@ -657,7 +666,7 @@ lmutils::load("matrix1.csv")
 ### `lmutils::match_rows`
 
 Matches rows of a matrix by the values of a vector.
-- `data` is a list of matrix convertable objects.
+- `data` is a list of matrix convertible objects.
 - `with` is a numeric vector.
 - `by` is the column name to match the rows by.
 - `out` is a standard output file.
@@ -691,7 +700,7 @@ lmutils::match_rows_dir(
 ### `lmutils::dedup`
 
 Deduplicate a matrix by a column. The first occurrence of each value is kept.
-- `data` is a list of matrix convertable objects.
+- `data` is a list of matrix convertible objects.
 - `by` is the column name to deduplicate by.
 - `out` is a standard output file.
 
@@ -864,6 +873,14 @@ Computes the variance of a vector.
 lmutils::var(
     c(1, 2, 3),
 )
+```
+
+### `lmutils::num_cores`
+
+Returns the number of cores available on the system. This can be used to determine the number of cores to use for parallel operations.
+
+```r
+lmutils::num_cores()
 ```
 
 ## Configuration

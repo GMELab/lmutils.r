@@ -4,7 +4,7 @@
 \alias{convert_file}
 \title{DEPRECATED
 Convert files from one format to another.
-\code{from} is a list of matrix convertable objects.
+\code{from} is a list of matrix convertible objects.
 \code{to} is a list of file names to write to.}
 \usage{
 convert_file(from, to)
@@ -12,6 +12,6 @@ convert_file(from, to)
 \description{
 DEPRECATED
 Convert files from one format to another.
-\code{from} is a list of matrix convertable objects.
+\code{from} is a list of matrix convertible objects.
 \code{to} is a list of file names to write to.
 }

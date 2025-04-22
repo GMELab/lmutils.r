@@ -3,13 +3,13 @@
 \name{crossprod}
 \alias{crossprod}
 \title{Computes the cross product of the matrix. Equivalent to \code{t(data) \%*\% data}.
-\code{data} is a list of matrix convertable objects.
+\code{data} is a list of matrix convertible objects.
 \code{out} is a standard output file.}
 \usage{
 crossprod(data, out)
 }
 \description{
 Computes the cross product of the matrix. Equivalent to \code{t(data) \%*\% data}.
-\code{data} is a list of matrix convertable objects.
+\code{data} is a list of matrix convertible objects.
 \code{out} is a standard output file.
 }

@@ -3,7 +3,7 @@
 \name{match_rows}
 \alias{match_rows}
 \title{Match the rows of a matrix to the values in a vector by a column.
-\code{data} is a list of matrix convertable objects.
+\code{data} is a list of matrix convertible objects.
 \code{with} is a numeric vector.
 \code{by} is the column to match by.
 \code{out} is a standard output file.}
@@ -12,7 +12,7 @@ match_rows(data, with, by, out)
 }
 \description{
 Match the rows of a matrix to the values in a vector by a column.
-\code{data} is a list of matrix convertable objects.
+\code{data} is a list of matrix convertible objects.
 \code{with} is a numeric vector.
 \code{by} is the column to match by.
 \code{out} is a standard output file.
