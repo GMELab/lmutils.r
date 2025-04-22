@@ -1668,6 +1668,14 @@ pub fn var(x: &[f64]) -> f64 {
     lmutils::variance(x, 1)
 }
 
+/// Get the number of cores available.
+/// This is the number of threads that can be used for parallel operations.
+/// @export
+#[extendr]
+pub fn num_cores() -> usize {
+    num_cpus::get()
+}
+
 // END OTHER FUNCTIONS
 
 // CONFIG FUNCTIONS
@@ -1964,6 +1972,8 @@ extendr_module! {
     fn median;
     fn sd;
     fn var;
+
+    fn num_cores;
 
     fn set_log_level;
     fn set_core_parallelism;
