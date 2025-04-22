@@ -623,6 +623,9 @@ pub fn linear_regression(data: Robj, outcomes: Robj) -> Result<Robj> {
         .colnames()?
         .map(|x| x.into_iter().map(|x| x.to_string()).collect::<Vec<_>>());
     let output_size = data.len() * outcomes.ncols()?;
+    if !outcomes.is_loaded() {
+        outcomes.into_owned()?;
+    }
     let res = lmutils::core_parallelize::<_, _, _, extendr_api::Error>(
         data,
         Some(output_size),
