@@ -178,7 +178,7 @@ pub fn matrix_list(robj: Robj) -> Result<Vec<lmutils::Matrix>> {
 
 pub fn maybe_mutating_return(
     data: Robj,
-    out: Nullable<Robj>,
+    out: Robj,
     f: impl FnOnce(lmutils::Matrix) -> Result<lmutils::Matrix>,
 ) -> Result<Robj> {
     maybe_mutating_return_matrix(matrix(data)?, out, f)
@@ -186,42 +186,40 @@ pub fn maybe_mutating_return(
 
 pub fn maybe_mutating_return_matrix(
     mut data: lmutils::Matrix,
-    out: Nullable<Robj>,
+    out: Robj,
     f: impl FnOnce(lmutils::Matrix) -> Result<lmutils::Matrix>,
 ) -> Result<Robj> {
     // if out is NULL or a string, convert into_owned
     // if out is TRUE, then we mutate
-    if let NotNull(out) = out {
-        if out.is_string() {
-            // out is a string, so we convert to owned and write to file
-            let out = out.as_str().unwrap();
-            let file = File::from_str(out)?;
-            data.into_owned()?;
-            let mut data = f(data)?;
-            file.write(&mut data)?;
-            Ok(().into())
-        } else if out.is_logical() && out.as_logical().unwrap().is_true() {
-            // out is TRUE, so we mutate if possible
-            f(data)?;
-            Ok(().into())
-        } else {
-            Err("out must be a string, TRUE, or NULL".into())
-        }
-    } else {
+    if out.is_null() {
         // out is NULL, so we convert to owned and return
         data.into_owned()?;
         Ok(f(data)?.into_robj()?)
+    } else if out.is_string() {
+        // out is a string, so we convert to owned and write to file
+        let out = out.as_str().unwrap();
+        let file = File::from_str(out)?;
+        data.into_owned()?;
+        let mut data = f(data)?;
+        file.write(&mut data)?;
+        Ok(().into())
+    } else if out.is_logical() && out.as_logical().unwrap().is_true() {
+        // out is TRUE, so we mutate if possible
+        f(data)?;
+        Ok(().into())
+    } else {
+        Err("out must be a string, TRUE, or NULL".into())
     }
 }
 
 pub fn maybe_return_vec(
     data: Robj,
-    out: Nullable<Robj>,
+    out: Robj,
     f: impl FnOnce(lmutils::Matrix, Vec<lmutils::Matrix>) -> Result<lmutils::Matrix>,
 ) -> Result<Nullable<Robj>> {
     let mut data = matrix_list(data)?;
-    let out = match out {
-        NotNull(out) if out.is_string() => Some(lmutils::File::from_str(out.as_str().unwrap())?),
+    let out = match out.is_null() {
+        false if out.is_string() => Some(lmutils::File::from_str(out.as_str().unwrap())?),
         _ => None,
     };
     let first = data.remove(0);
@@ -272,15 +270,7 @@ pub fn maybe_return_paired(
         out.into_iter().map(|(_, x)| x).collect()
     } else {
         return Err("out must be a character vector, logical vector, or list".into());
-    }
-    .into_iter()
-    .map(|x| {
-        if x.is_null() {
-            Nullable::Null
-        } else {
-            Nullable::NotNull(x)
-        }
-    });
+    };
     let data = data.into_iter().zip(v).collect::<Vec<_>>();
     let v = parallelize(data, move |_, (data, out)| {
         maybe_mutating_return_matrix(data, out, &f)
@@ -338,6 +328,7 @@ pub fn list_files(dir: &Path) -> std::io::Result<Vec<PathBuf>> {
 }
 
 #[derive(Debug)]
+#[extendr]
 pub enum Mat {
     Ref(ExternalPtr<Mat>),
     Own(lmutils::Matrix),
@@ -352,8 +343,8 @@ impl Mat {
                     m,
                     Mat::Own(lmutils::Matrix::Owned(OwnedMatrix::new(0, 0, vec![], None))),
                 );
-                let ptr = ExternalPtr::new(slf);
-                ptr.as_robj().set_class(&["Mat"]).unwrap();
+                let mut ptr = ExternalPtr::new(slf);
+                ptr.as_robj_mut().set_class(&["Mat"]).unwrap();
                 *m = Mat::Ref(ptr);
                 m.ptr()
             }

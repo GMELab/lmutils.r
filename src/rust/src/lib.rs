@@ -17,7 +17,7 @@ pub use crate::utils::{
     maybe_return_vec, named_matrix_list, parallelize, Mat, Par,
 };
 use extendr_api::{prelude::*, AsTypedSlice};
-use lmutils::{File, IntoMatrix, Join, Matrix, OwnedMatrix};
+use lmutils::{Eigen, File, IntoMatrix, Join, Matrix, OwnedMatrix};
 use rayon::{prelude::*, slice::ParallelSliceMut};
 use tracing::{debug, info, trace};
 use utils::{matrix_list, maybe_return_paired};
@@ -462,6 +462,40 @@ impl Mat {
         self.t_rename_columns_with_regex(pattern, replacement);
         Ok(self.ptr())
     }
+
+    /// Compute the eigenvalues and eigenvectors of this matrix.
+    /// Returns a list with a complex or real vector of eigenvalues and a matrix of eigenvectors.
+    /// @export
+    pub fn eigen(&mut self) -> Result<Robj> {
+        let mat: &mut lmutils::Matrix = &mut *self;
+        match mat.eigen(None)? {
+            Eigen::Real { values, vectors } => {
+                let matrix = RMatrix::new_matrix(
+                    values.len(),
+                    values.len(),
+                    #[inline(always)]
+                    |r, c| vectors[c * values.len() + r],
+                );
+                Ok(list!(values = values.into_robj(), vectors = matrix.into_robj()).into_robj())
+            }
+            Eigen::Complex { values, vectors } => {
+                let values = values
+                    .into_iter()
+                    .map(|x| c64::new(x.re, x.im))
+                    .collect::<Vec<_>>();
+                let matrix = RMatrix::new_matrix(
+                    values.len(),
+                    values.len(),
+                    #[inline(always)]
+                    |r, c| {
+                        let v = vectors[c * values.len() + r];
+                        c64::new(v.re, v.im)
+                    },
+                );
+                Ok(list!(values = values.into_robj(), vectors = matrix.into_robj()).into_robj())
+            }
+        }
+    }
 }
 
 // END MATRIX OBJECT
@@ -473,11 +507,14 @@ impl Mat {
 /// `to` is a character vector of file names to write to.
 /// @export
 #[extendr]
-pub fn save(from: Robj, to: &[Rstr]) -> Result<()> {
+pub fn save(from: Robj, to: Robj) -> Result<()> {
     init();
 
     let mut from = matrix_list(from)?;
-    let to = to.iter().map(|x| x.as_str()).collect::<Vec<_>>();
+    let to = to
+        .as_str_iter()
+        .expect("to must be a character vector")
+        .collect::<Vec<_>>();
     let to = to
         .into_iter()
         .map(lmutils::File::from_str)
@@ -645,8 +682,10 @@ pub fn linear_regression(data: Robj, outcomes: Robj) -> Result<Robj> {
                 .col_iter()
                 .enumerate()
                 .map(|(i, outcome)| {
-                    let res =
-                        lmutils::linear_regression(data.as_ref(), outcome.try_as_slice().unwrap());
+                    let res = lmutils::linear_regression(
+                        data.as_ref(),
+                        outcome.try_as_col_major().unwrap().as_slice(),
+                    );
                     Res {
                         slopes: res.slopes().to_vec(),
                         intercept: res.intercept(),
@@ -732,7 +771,7 @@ pub fn logistic_regression(data: Robj, outcomes: Robj) -> Result<Robj> {
                 .map(|(i, outcome)| {
                     let res = lmutils::logistic_regression_irls(
                         data.as_ref(),
-                        outcome.try_as_slice().unwrap(),
+                        outcome.try_as_col_major().unwrap().as_slice(),
                     );
                     Res {
                         slopes: res.slopes().to_vec(),
@@ -986,7 +1025,7 @@ pub fn remove_rows(data: Robj, rows: Robj, out: Robj) -> Result<Robj> {
 /// `out` is a standard output file.
 /// @export
 #[extendr]
-pub fn crossprod(data: Robj, out: Nullable<Robj>) -> Result<Robj> {
+pub fn crossprod(data: Robj, out: Robj) -> Result<Robj> {
     init();
 
     maybe_mutating_return(data, out, |mut data| {
@@ -1002,7 +1041,7 @@ pub fn crossprod(data: Robj, out: Nullable<Robj>) -> Result<Robj> {
 /// `out` is a standard output file.
 /// @export
 #[extendr]
-pub fn mul(a: Robj, b: Robj, out: Nullable<Robj>) -> Result<Robj> {
+pub fn mul(a: Robj, b: Robj, out: Robj) -> Result<Robj> {
     init();
 
     maybe_mutating_return(a, out, |mut a| {
@@ -1150,12 +1189,18 @@ pub fn new_column_from_regex(
 /// `values` is a character vector of values.
 /// @export
 #[extendr]
-pub fn map_from_pairs(names: &[Rstr], values: &[Rstr]) -> Result<Robj> {
+pub fn map_from_pairs(names: Robj, values: Robj) -> Result<Robj> {
     init();
 
     let mut map = HashMap::new();
-    for (name, value) in names.iter().zip(values.iter()).rev() {
-        map.insert(name.as_str(), value.as_str());
+    let names = names
+        .as_str_vector()
+        .expect("names should be a character vector");
+    let values = values
+        .as_str_vector()
+        .expect("values should be a character vector");
+    for (name, value) in names.into_iter().zip(values.into_iter()).rev() {
+        map.insert(name, value);
     }
     let mut list = List::from_values(map.values());
     list.set_names(map.into_keys())?;
@@ -1219,8 +1264,8 @@ pub fn new_column_from_map(df: List, column: &str, values: List, new_column: &st
 pub fn new_column_from_map_pairs(
     df: List,
     column: &str,
-    names: &[Rstr],
-    values: &[Rstr],
+    names: Robj,
+    values: Robj,
     new_column: &str,
 ) -> Result<Robj> {
     init();
@@ -1233,8 +1278,14 @@ pub fn new_column_from_map_pairs(
         .as_str_vector()
         .expect("column should be a character vector");
     let mut map = HashMap::new();
+    let names = names
+        .as_str_vector()
+        .expect("names should be a character vector");
+    let values = values
+        .as_str_vector()
+        .expect("values should be a character vector");
     for (name, value) in names.iter().zip(values.iter()).rev() {
-        map.insert(name.as_str(), value.as_str());
+        map.insert(*name, *value);
     }
     new_column_from_map_aux(df, map, column, new_column)
 }
@@ -1283,17 +1334,18 @@ impl<'a> Col<'a> {
 /// (integer or double), character, or logical vectors.
 /// @export
 #[extendr]
-pub fn df_sort_asc(df: List, columns: &[Rstr]) -> Result<Robj> {
+pub fn df_sort_asc(df: List, columns: Robj) -> Result<Robj> {
     init();
 
     let mut names = df.iter().map(|(n, r)| (n, Par(r))).collect::<Vec<_>>();
     let cols = columns
-        .iter()
+        .as_str_iter()
+        .expect("columns should be a character vector")
         .map(|c| {
             let (_, col) = names
                 .iter()
-                .find(|(n, _)| *n == c.as_str())
-                .unwrap_or_else(|| panic!("column {} not found", c.as_str()));
+                .find(|(n, _)| *n == c)
+                .unwrap_or_else(|| panic!("column {} not found", c));
             if col.is_string() {
                 Col::Str(col.as_str_vector().unwrap())
             } else if col.is_integer() {
@@ -1305,7 +1357,7 @@ pub fn df_sort_asc(df: List, columns: &[Rstr]) -> Result<Robj> {
             } else {
                 panic!(
                     "column {} must be a character, integer, real, or logical vector",
-                    c.as_str()
+                    c,
                 )
             }
         })
@@ -1398,7 +1450,7 @@ impl PartialEq for Cmp {
 pub fn df_split(df: List, by: &str) -> Result<Robj> {
     init();
 
-    df_sort_asc(df.clone(), &[by.into()])?;
+    df_sort_asc(df.clone(), [by].into_robj())?;
     let (_, col) = df
         .iter()
         .find(|(n, _)| *n == by)
@@ -1477,7 +1529,7 @@ pub fn df_split(df: List, by: &str) -> Result<Robj> {
                 })
                 .collect::<Vec<_>>();
             let l = i - start;
-            let df = List::from_names_and_values(names.clone(), subset)?;
+            let mut df = List::from_names_and_values(names.clone(), subset)?;
             df.set_class(&["data.frame"])?;
             df.set_attrib(
                 row_names_symbol(),
@@ -1605,14 +1657,15 @@ pub fn df_combine(data: Robj) -> Result<Robj> {
 
     get_rows(data, 0, &mut df_data);
 
-    let df = List::from_iter(df_data.into_iter().map(List::from_values)).set_attrib(
+    let mut df = List::from_iter(df_data.into_iter().map(List::from_values));
+    df.set_attrib(
         row_names_symbol(),
         (1..=nrows).map(|x| x.to_string()).collect_robj(),
     )?;
-    let df = df.set_attrib(names_symbol(), colnames)?;
-    let df = df.set_class(&["data.frame"])?;
+    df.set_attrib(names_symbol(), colnames)?;
+    df.set_class(&["data.frame"])?;
 
-    Ok(df)
+    Ok(df.into_robj())
 }
 
 // END DATA FRAME FUNCTIONS
@@ -1822,7 +1875,7 @@ pub fn internal_lmutils_file_into_fd(file: &str, fd: Robj) {
 /// @export
 #[extendr]
 #[deprecated]
-pub fn convert_file(from: Robj, to: &[Rstr]) -> Result<()> {
+pub fn convert_file(from: Robj, to: Robj) -> Result<()> {
     init();
 
     save(from, to)
@@ -1835,7 +1888,7 @@ pub fn convert_file(from: Robj, to: &[Rstr]) -> Result<()> {
 /// @export
 #[extendr]
 #[deprecated]
-pub fn save_matrix(mat: Robj, out: &[Rstr]) -> Result<()> {
+pub fn save_matrix(mat: Robj, out: Robj) -> Result<()> {
     init();
 
     save(mat, out)
@@ -1849,7 +1902,7 @@ pub fn save_matrix(mat: Robj, out: &[Rstr]) -> Result<()> {
 /// @export
 #[extendr]
 #[deprecated]
-pub fn to_matrix(df: Robj, out: Nullable<Robj>) -> Result<Robj> {
+pub fn to_matrix(df: Robj, out: Robj) -> Result<Robj> {
     init();
 
     maybe_mutating_return(df, out, Ok)
@@ -1894,7 +1947,7 @@ pub fn to_matrix_dir(from: &str, to: Nullable<&str>, file_type: &str) -> Result<
 /// @export
 #[extendr]
 #[deprecated]
-pub fn extend_matrices(data: Robj, out: Nullable<Robj>) -> Result<Nullable<Robj>> {
+pub fn extend_matrices(data: Robj, out: Robj) -> Result<Nullable<Robj>> {
     init();
 
     maybe_return_vec(data, out, |mut first, mut data| {
@@ -1922,7 +1975,7 @@ pub fn set_num_main_threads(num: u32) {
 /// @export
 #[extendr]
 #[deprecated]
-pub fn combine_matrices(data: Robj, out: Nullable<Robj>) -> Result<Nullable<Robj>> {
+pub fn combine_matrices(data: Robj, out: Robj) -> Result<Nullable<Robj>> {
     init();
 
     maybe_return_vec(data, out, |mut first, mut data| {

@@ -482,6 +482,18 @@ Remove columns with all identical entries.
 mat$remove_identical_columns()
 ```
 
+### `lmutils::Mat$eigen`
+
+Compute the eigenvalues and eigenvectors of the matrix. The matrix must be square.
+
+```r
+eigen <- mat$eigen()
+# a vector of real or complex eigenvalues
+eigen$values
+# a n by n matrix of real or complex eigenvectors
+eigen$vectors
+```
+
 ### `lmutils::Mat$subset_columns`
 
 Subset the matrix to only include the given columns (1-based indices or names).
