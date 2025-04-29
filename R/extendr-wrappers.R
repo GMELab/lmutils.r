@@ -6,7 +6,6 @@
 # This file was created with the following call:
 #   .Call("wrap__make_lmutils_wrappers", use_symbols = TRUE, package_name = "lmutils")
 
-#' @docType package
 #' @usage NULL
 #' @useDynLib lmutils, .registration = TRUE
 NULL
@@ -382,6 +381,8 @@ Mat$remove_identical_columns <- function() .Call(wrap__Mat__remove_identical_col
 Mat$subset_columns <- function(columns) .Call(wrap__Mat__subset_columns, self, columns)
 
 Mat$rename_columns_with_regex <- function(pattern, replacement) .Call(wrap__Mat__rename_columns_with_regex, self, pattern, replacement)
+
+Mat$eigen <- function() .Call(wrap__Mat__eigen, self)
 
 #' @rdname Mat
 #' @usage NULL

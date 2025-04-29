@@ -476,7 +476,11 @@ impl Mat {
                     #[inline(always)]
                     |r, c| vectors[c * values.len() + r],
                 );
-                Ok(list!(values = values.into_robj(), vectors = matrix.into_robj()).into_robj())
+                Ok(List::from_pairs([
+                    ("values", values.into_robj()),
+                    ("vectors", matrix.into_robj()),
+                ])
+                .into_robj())
             }
             Eigen::Complex { values, vectors } => {
                 let values = values
@@ -492,7 +496,11 @@ impl Mat {
                         c64::new(v.re, v.im)
                     },
                 );
-                Ok(list!(values = values.into_robj(), vectors = matrix.into_robj()).into_robj())
+                Ok(List::from_pairs([
+                    ("values", values.into_robj()),
+                    ("vectors", matrix.into_robj()),
+                ])
+                .into_robj())
             }
         }
     }
