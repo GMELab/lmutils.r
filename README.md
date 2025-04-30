@@ -103,6 +103,7 @@ All files can be optionally compressed with `gzip`, `rdata` files are assumed to
 - `.cbor`
 - `.rkyv`
 - `.rdata`
+- `.rds`
 
 ## Introduction
 
