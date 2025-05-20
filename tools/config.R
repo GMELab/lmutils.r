@@ -90,11 +90,19 @@ if (file.exists(mv_ofp)) {
 mv_txt <- readLines(mv_fp)
 
 # replace placeholder values
-new_txt <- gsub("@CRAN_FLAGS@", .cran_flags, mv_txt) |>
-  gsub("@PROFILE@", .profile, x = _) |>
-  gsub("@CLEAN_TARGET@", .clean_targets, x = _) |>
-  gsub("@LIBDIR@", .libdir, x = _) |>
-  gsub("@TARGET@", .target, x = _)
+new_txt <- gsub(
+  "@TARGET@", .target,
+  gsub(
+    "@LIBDIR@", .libdir,
+    gsub(
+      "@CLEAN_TARGET@", .clean_targets,
+      gsub(
+        "@PROFILE@", .profile,
+        gsub("@CRAN_FLAGS@", .cran_flags, mv_txt)
+      )
+    )
+  )
+)
 
 message("Writing `", mv_ofp, "`.")
 con <- file(mv_ofp, open = "wb")
