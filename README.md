@@ -47,6 +47,7 @@
   - [`lmutils::Mat$eigen`](#lmutilsmateigen)
   - [`lmutils::Mat$subset_columns`](#lmutilsmatsubset_columns)
   - [`lmutils::Mat$rename_columns_with_regex`](#lmutilsmatrename_columns_with_regex)
+  - [`lmutils::Mat$scale_columns`](#lmutilsmatscale_columns)
 - [Matrix Functions](#matrix-functions)
   - [`lmutils::save`](#lmutilssave)
   - [`lmutils::save_dir`](#lmutilssave_dir)
@@ -513,6 +514,17 @@ Rename columns with a regex and a replacement string.
 ```r
 mat$rename_columns_with_regex("[0-9]", "X")
 ```
+
+### `lmutils::Mat$scale_columns`
+
+Scale the columns of a matrix by a given scalar or vector. The vector must be the same length as the number of columns in the matrix.
+
+```r
+mat$scale_columns(2)
+mat$scale_columns(c(1, 2, 3))
+```
+
+```r
 
 ## Matrix Functions
 

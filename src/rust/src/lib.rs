@@ -504,6 +504,14 @@ impl Mat {
             }
         }
     }
+
+    /// Scale the columns of this matrix by the given scalar or vector.
+    /// `scale` is a numeric vector of length 1 or the number of columns in the matrix.
+    /// @export
+    pub fn scale_columns(&mut self, scale: &[f64]) -> Result<Ptr> {
+        self.t_scale_columns(scale.to_vec());
+        Ok(self.ptr())
+    }
 }
 
 // END MATRIX OBJECT

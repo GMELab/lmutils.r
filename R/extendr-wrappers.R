@@ -384,6 +384,8 @@ Mat$rename_columns_with_regex <- function(pattern, replacement) .Call(wrap__Mat_
 
 Mat$eigen <- function() .Call(wrap__Mat__eigen, self)
 
+Mat$scale_columns <- function(scale) .Call(wrap__Mat__scale_columns, self, scale)
+
 #' @rdname Mat
 #' @usage NULL
 #' @export
