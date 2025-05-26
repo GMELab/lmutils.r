@@ -512,6 +512,14 @@ impl Mat {
         self.t_scale_columns(scale.to_vec());
         Ok(self.ptr())
     }
+
+    /// Scale the rows of this matrix by the given scalar or vector.
+    /// `scale` is a numeric vector of length 1 or the number of rows in the matrix.
+    /// @export
+    pub fn scale_rows(&mut self, scale: &[f64]) -> Result<Ptr> {
+        self.t_scale_rows(scale.to_vec());
+        Ok(self.ptr())
+    }
 }
 
 // END MATRIX OBJECT

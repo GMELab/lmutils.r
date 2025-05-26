@@ -524,7 +524,15 @@ mat$scale_columns(2)
 mat$scale_columns(c(1, 2, 3))
 ```
 
+### `lmutils::Mat$scale_rows`
+
+Scale the rows of a matrix by a given scalar or vector. The vector must be the same length as the number of rows in the matrix.
+
 ```r
+mat$scale_rows(2)
+mat$scale_rows(c(1, 2, 3))
+```
+
 
 ## Matrix Functions
 
