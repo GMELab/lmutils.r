@@ -53,6 +53,14 @@ linear_regression <- function(data, outcomes) .Call(wrap__linear_regression, dat
 #' @export
 logistic_regression <- function(data, outcomes) .Call(wrap__logistic_regression, data, outcomes)
 
+#' Compute a logistic regression (using Firth's penalization) between each matrix in a list and each column in another matrix.
+#' `data` is a list of matrix convertible objects.
+#' `outcomes` is a matrix convertible object.
+#' Returns a data frame with columns `slopes`, `intercept`, `predicted` (if enabled), `r2`,
+#' `adj_r2`, `data`, `outcome`, `n`, and `m`.
+#' @export
+logistic_regression_firth <- function(data, outcomes) .Call(wrap__logistic_regression_firth, data, outcomes)
+
 #' Combine a list of double vectors or matrices into a matrix.
 #' `data` is a list of double vectors or matrices.
 #' `out` is an output file name or `NULL` to return the matrix.
@@ -385,6 +393,8 @@ Mat$rename_columns_with_regex <- function(pattern, replacement) .Call(wrap__Mat_
 Mat$eigen <- function() .Call(wrap__Mat__eigen, self)
 
 Mat$scale_columns <- function(scale) .Call(wrap__Mat__scale_columns, self, scale)
+
+Mat$scale_rows <- function(scale) .Call(wrap__Mat__scale_rows, self, scale)
 
 #' @rdname Mat
 #' @usage NULL

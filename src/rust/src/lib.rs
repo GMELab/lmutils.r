@@ -762,6 +762,21 @@ pub fn linear_regression(data: Robj, outcomes: Robj) -> Result<Robj> {
 /// @export
 #[extendr]
 pub fn logistic_regression(data: Robj, outcomes: Robj) -> Result<Robj> {
+    logistic_regression_inner(data, outcomes, false)
+}
+
+/// Compute a logistic regression (using Firth's penalization) between each matrix in a list and each column in another matrix.
+/// `data` is a list of matrix convertible objects.
+/// `outcomes` is a matrix convertible object.
+/// Returns a data frame with columns `slopes`, `intercept`, `predicted` (if enabled), `r2`,
+/// `adj_r2`, `data`, `outcome`, `n`, and `m`.
+/// @export
+#[extendr]
+pub fn logistic_regression_firth(data: Robj, outcomes: Robj) -> Result<Robj> {
+    logistic_regression_inner(data, outcomes, true)
+}
+
+fn logistic_regression_inner(data: Robj, outcomes: Robj, firth: bool) -> Result<Robj> {
     init();
 
     let mut outcomes = matrix(outcomes)?;
@@ -793,13 +808,16 @@ pub fn logistic_regression(data: Robj, outcomes: Robj) -> Result<Robj> {
                 .col_iter()
                 .enumerate()
                 .map(|(i, outcome)| {
-                    let res = lmutils::logistic_regression_irls(
+                    let res = lmutils::Glm::irls::<lmutils::family::BinomialLogit>(
                         data.as_ref(),
                         outcome.try_as_col_major().unwrap().as_slice(),
+                        1e-10,
+                        25,
+                        firth,
                     );
                     Res {
-                        slopes: res.slopes().to_vec(),
-                        intercept: res.intercept(),
+                        slopes: res.slopes().iter().map(|x| x.coef()).collect::<Vec<_>>(),
+                        intercept: res.intercept().coef(),
                         predicted: res.predicted().to_vec(),
                         r2: res.r2(),
                         adj_r2: res.adj_r2(),
@@ -2035,6 +2053,7 @@ extendr_module! {
     fn column_p_values;
     fn linear_regression;
     fn logistic_regression;
+    fn logistic_regression_firth;
     fn combine_vectors;
     fn combine_rows;
     fn remove_rows;
