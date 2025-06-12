@@ -40,6 +40,7 @@ column_p_values <- function(data, outcomes) .Call(wrap__column_p_values, data, o
 #' Compute a linear regression between each matrix in a list and each column in another matrix.
 #' `data` is a list of matrix convertible objects.
 #' `outcomes` is a matrix convertible object.
+#' If there is only one outcome, all rows with NA values in that outcome will be removed.
 #' Returns a data frame with columns `slopes`, `intercept`, `predicted` (if enabled), `r2`,
 #' `adj_r2`, `data`, `outcome`, `n`, and `m`.
 #' @export
@@ -56,7 +57,8 @@ logistic_regression <- function(data, outcomes) .Call(wrap__logistic_regression,
 #' Compute a logistic regression (using Firth's penalization) between each matrix in a list and each column in another matrix.
 #' `data` is a list of matrix convertible objects.
 #' `outcomes` is a matrix convertible object.
-#' Returns a data frame with columns `slopes`, `intercept`, `predicted` (if enabled), `r2`,
+#' If there is only one outcome, all rows with NA values in that outcome will be removed.
+#' Returns a data frame with columns `slopes`, `intercept`, `predicted` (if enabled), `r2`o,
 #' `adj_r2`, `data`, `outcome`, `n`, and `m`.
 #' @export
 logistic_regression_firth <- function(data, outcomes) .Call(wrap__logistic_regression_firth, data, outcomes)
@@ -178,6 +180,13 @@ df_combine <- function(data) .Call(wrap__df_combine, data)
 #' `predicted` is a numeric vector of predicted values.
 #' @export
 compute_r2 <- function(actual, predicted) .Call(wrap__compute_r2, actual, predicted)
+
+#' Compute Tjur's R^2 value for given actual and predicted vectors.
+#' `actual` is a numeric vector of actual values.
+#' `predicted` is a numeric vector of predicted probabilities.
+#' See https://doi.org/10.1198/tast.2009.08210
+#' @export
+compute_r2_tjur <- function(actual, predicted) .Call(wrap__compute_r2_tjur, actual, predicted)
 
 #' Compute the mean of a numeric vector.
 #' `x` is a numeric vector.

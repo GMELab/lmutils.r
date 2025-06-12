@@ -1785,6 +1785,25 @@ pub fn compute_r2(actual: &[f64], predicted: &[f64]) -> Result<f64> {
     Ok(lmutils::compute_r2(actual, predicted))
 }
 
+/// Compute Tjur's R^2 value for given actual and predicted vectors.
+/// `actual` is a numeric vector of actual values.
+/// `predicted` is a numeric vector of predicted probabilities.
+/// See https://doi.org/10.1198/tast.2009.08210
+/// @export
+#[extendr]
+pub fn compute_r2_tjur(actual: &[f64], predicted: &[f64]) -> Result<f64> {
+    init();
+
+    if actual.len() != predicted.len() {
+        return Err("actual and predicted vectors must have the same length".into());
+    }
+    if actual.is_empty() || predicted.is_empty() {
+        return Ok(0.0);
+    }
+
+    Ok(lmutils::compute_r2_tjur(actual, predicted))
+}
+
 /// Compute the mean of a numeric vector.
 /// `x` is a numeric vector.
 /// @export
@@ -2133,6 +2152,7 @@ extendr_module! {
     fn df_combine;
 
     fn compute_r2;
+    fn compute_r2_tjur;
     fn mean;
     fn median;
     fn sd;

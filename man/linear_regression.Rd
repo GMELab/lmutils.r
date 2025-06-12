@@ -5,6 +5,7 @@
 \title{Compute a linear regression between each matrix in a list and each column in another matrix.
 \code{data} is a list of matrix convertible objects.
 \code{outcomes} is a matrix convertible object.
+If there is only one outcome, all rows with NA values in that outcome will be removed.
 Returns a data frame with columns \code{slopes}, \code{intercept}, \code{predicted} (if enabled), \code{r2},
 \code{adj_r2}, \code{data}, \code{outcome}, \code{n}, and \code{m}.}
 \usage{
@@ -14,6 +15,7 @@ linear_regression(data, outcomes)
 Compute a linear regression between each matrix in a list and each column in another matrix.
 \code{data} is a list of matrix convertible objects.
 \code{outcomes} is a matrix convertible object.
+If there is only one outcome, all rows with NA values in that outcome will be removed.
 Returns a data frame with columns \code{slopes}, \code{intercept}, \code{predicted} (if enabled), \code{r2},
 \code{adj_r2}, \code{data}, \code{outcome}, \code{n}, and \code{m}.
 }
