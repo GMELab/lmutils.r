@@ -74,6 +74,7 @@
   - [`lmutils::df_combine`](#lmutilsnew_column_from_map_pairs)
 - [Other Functions](#other-functions)
   - [`lmutils::compute_r2`](#lmutilscompute_r2)
+  - [`lmutils::compute_r2_tjur`](#lmutilscompute_r2_tjur)
   - [`lmutils::mean`](#lmutilsmean)
   - [`lmutils::median`](#lmutilsmedian)
   - [`lmutils::sd`](#lmutilssd)
@@ -868,6 +869,17 @@ Compute the R^2 value for given actual and predicted vectors.
 lmutils::compute_r2(
     c(1, 2, 3),
     c(1, 2, 3),
+)
+```
+
+### `lmutils::compute_r2_tjur`
+
+Compute the Tjur R^2 value for given actual and predicted vectors.
+
+```r
+lmutils::compute_r2_tjur(
+    c(1, 0, 1),
+    c(0.8, 0.2, 0.9),
 )
 ```
 
