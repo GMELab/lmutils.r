@@ -800,7 +800,7 @@ pub fn logistic_regression(data: Robj, outcomes: Robj) -> Result<Robj> {
 /// `outcomes` is a matrix convertible object.
 /// If there is only one outcome, all rows with NA values in that outcome will be removed.
 /// Returns a data frame with columns `slopes`, `intercept`, `predicted` (if enabled), `r2`o,
-/// `adj_r2`, `data`, `outcome`, `n`, and `m`.
+/// `adj_r2`, `r2_tjur`, `data`, `outcome`, `n`, and `m`.
 /// @export
 #[extendr]
 pub fn logistic_regression_firth(data: Robj, outcomes: Robj) -> Result<Robj> {
@@ -829,6 +829,7 @@ fn logistic_regression_inner(data: Robj, outcomes: Robj, firth: bool) -> Result<
                 predicted = Vec::<f64>::new(),
                 r2 = Vec::<f64>::new(),
                 adj_r2 = Vec::<f64>::new(),
+                r2_tjur = Vec::<f64>::new(),
                 data = Vec::<String>::new(),
                 outcome = Vec::<String>::new(),
                 n = Vec::<usize>::new(),
@@ -848,6 +849,7 @@ fn logistic_regression_inner(data: Robj, outcomes: Robj, firth: bool) -> Result<
         predicted: Vec<f64>,
         r2: f64,
         adj_r2: f64,
+        r2_tjur: f64,
         data: String,
         outcome: String,
         n: usize,
@@ -881,6 +883,7 @@ fn logistic_regression_inner(data: Robj, outcomes: Robj, firth: bool) -> Result<
                         predicted: res.predicted().to_vec(),
                         r2: res.r2(),
                         adj_r2: res.adj_r2(),
+                        r2_tjur: res.r2_tjur(),
                         data: data_name.clone(),
                         outcome: outcome_names
                             .as_deref()
@@ -903,6 +906,7 @@ fn logistic_regression_inner(data: Robj, outcomes: Robj, firth: bool) -> Result<
         predicted = res.iter().map(|_| 0).collect_robj(),
         r2 = res.iter().map(|r| r.r2).collect_robj(),
         adj_r2 = res.iter().map(|r| r.adj_r2).collect_robj(),
+        r2_tjur = res.iter().map(|r| r.r2_tjur).collect_robj(),
         data = res.iter().map(|r| r.data.clone()).collect_robj(),
         outcome = res.iter().map(|r| r.outcome.clone()).collect_robj(),
         n = res.iter().map(|r| r.n).collect_robj(),
