@@ -874,7 +874,10 @@ fn logistic_regression_inner(data: Robj, outcomes: Robj, firth: bool) -> Result<
                         data.as_ref(),
                         outcome.try_as_col_major().unwrap().as_slice(),
                         1e-10,
-                        25,
+                        std::env::var("LMUTILS_MAX_ITER")
+                            .ok()
+                            .and_then(|x| x.parse::<usize>().ok())
+                            .unwrap_or(25),
                         firth,
                     );
                     Res {
