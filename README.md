@@ -621,6 +621,20 @@ results <- lmutils::logistic_regression(
 )
 ```
 
+# `lmutils::logistic_regression_firth`
+
+Perform a logistic regression with Firth's penalization between each data element and each outcome column
+- `data` is a list of matrix convertible objects.   
+- `outcomes` is a single matrix convertible object.
+The function returns a list of data frames with columns `slopes`, `intercept`, `r2`, `adj_r2`, `r2_tjur`, `data`, `outcome`, `n`, `m`, and `predicted` (if enabled).
+
+```r
+results <- lmutils::logistic_regression_firth(
+    c("block1.csv", "block2.mat.gz"),
+    "outcomes1.RData",
+)
+```
+
 ### `lmutils::combine_vectors`
 
 Combine a list of double vectors into a single matrix using the vectors as columns.
