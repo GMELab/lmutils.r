@@ -50,7 +50,7 @@ linear_regression <- function(data, outcomes) .Call(wrap__linear_regression, dat
 #' `data` is a list of matrix convertible objects.
 #' `outcomes` is a matrix convertible object.
 #' Returns a data frame with columns `slopes`, `intercept`, `predicted` (if enabled), `r2`,
-#' `adj_r2`, `data`, `outcome`, `n`, and `m`.
+#' `adj_r2`, `data`, `outcome`, `n`, `m`, and `coefs`.
 #' @export
 logistic_regression <- function(data, outcomes) .Call(wrap__logistic_regression, data, outcomes)
 
@@ -59,7 +59,7 @@ logistic_regression <- function(data, outcomes) .Call(wrap__logistic_regression,
 #' `outcomes` is a matrix convertible object.
 #' If there is only one outcome, all rows with NA values in that outcome will be removed.
 #' Returns a data frame with columns `slopes`, `intercept`, `predicted` (if enabled), `r2`o,
-#' `adj_r2`, `data`, `outcome`, `n`, and `m`.
+#' `adj_r2`, `r2_tjur`, `data`, `outcome`, `n`, `m`, and `coefs`.
 #' @export
 logistic_regression_firth <- function(data, outcomes) .Call(wrap__logistic_regression_firth, data, outcomes)
 

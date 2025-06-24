@@ -788,7 +788,7 @@ pub fn linear_regression(data: Robj, outcomes: Robj) -> Result<Robj> {
 /// `data` is a list of matrix convertible objects.
 /// `outcomes` is a matrix convertible object.
 /// Returns a data frame with columns `slopes`, `intercept`, `predicted` (if enabled), `r2`,
-/// `adj_r2`, `data`, `outcome`, `n`, and `m`.
+/// `adj_r2`, `data`, `outcome`, `n`, `m`, and `coefs`.
 /// @export
 #[extendr]
 pub fn logistic_regression(data: Robj, outcomes: Robj) -> Result<Robj> {
@@ -800,7 +800,7 @@ pub fn logistic_regression(data: Robj, outcomes: Robj) -> Result<Robj> {
 /// `outcomes` is a matrix convertible object.
 /// If there is only one outcome, all rows with NA values in that outcome will be removed.
 /// Returns a data frame with columns `slopes`, `intercept`, `predicted` (if enabled), `r2`o,
-/// `adj_r2`, `r2_tjur`, `data`, `outcome`, `n`, and `m`.
+/// `adj_r2`, `r2_tjur`, `data`, `outcome`, `n`, `m`, and `coefs`.
 /// @export
 #[extendr]
 pub fn logistic_regression_firth(data: Robj, outcomes: Robj) -> Result<Robj> {
@@ -833,7 +833,8 @@ fn logistic_regression_inner(data: Robj, outcomes: Robj, firth: bool) -> Result<
                 data = Vec::<String>::new(),
                 outcome = Vec::<String>::new(),
                 n = Vec::<usize>::new(),
-                m = Vec::<usize>::new()
+                m = Vec::<usize>::new(),
+                coefs = List::new(0)
             ));
         }
         outcomes.remove_rows(&rows_to_remove)?;
@@ -854,6 +855,7 @@ fn logistic_regression_inner(data: Robj, outcomes: Robj, firth: bool) -> Result<
         outcome: String,
         n: usize,
         m: usize,
+        coefs: Vec<lmutils::Coef>,
     }
 
     let outcome_names = outcomes
@@ -864,6 +866,9 @@ fn logistic_regression_inner(data: Robj, outcomes: Robj, firth: bool) -> Result<
         data,
         Some(output_size),
         |_, (data_name, data)| {
+            let colnames = data
+                .colnames()?
+                .map(|x| x.into_iter().map(|x| x.to_string()).collect::<Vec<_>>());
             let data = data.as_mat_ref()?;
             Ok(outcomes
                 .as_mat_ref_loaded()
@@ -879,6 +884,7 @@ fn logistic_regression_inner(data: Robj, outcomes: Robj, firth: bool) -> Result<
                             .and_then(|x| x.parse::<usize>().ok())
                             .unwrap_or(100),
                         firth,
+                        colnames.as_deref(),
                     );
                     Res {
                         slopes: res.slopes().iter().map(|x| x.coef()).collect::<Vec<_>>(),
@@ -894,6 +900,7 @@ fn logistic_regression_inner(data: Robj, outcomes: Robj, firth: bool) -> Result<
                             .unwrap_or_else(|| (i + 1).to_string()),
                         n: data.nrows(),
                         m: data.ncols(),
+                        coefs: res.coefs().to_vec(),
                     }
                 })
                 .collect::<Vec<_>>())
@@ -913,7 +920,8 @@ fn logistic_regression_inner(data: Robj, outcomes: Robj, firth: bool) -> Result<
         data = res.iter().map(|r| r.data.clone()).collect_robj(),
         outcome = res.iter().map(|r| r.outcome.clone()).collect_robj(),
         n = res.iter().map(|r| r.n).collect_robj(),
-        m = res.iter().map(|r| r.m).collect_robj()
+        m = res.iter().map(|r| r.m).collect_robj(),
+        coefs = res.iter().map(|_| 0).collect_robj()
     )
     .as_list()
     .unwrap();
@@ -922,6 +930,22 @@ fn logistic_regression_inner(data: Robj, outcomes: Robj, firth: bool) -> Result<
     let predicted = List::from_values(res.iter().map(|r| &r.predicted)).into_robj();
     df.set_elt(0, slopes).unwrap();
     df.set_elt(2, predicted).unwrap();
+    df.set_elt(
+        10,
+        List::from_iter(res.iter().map(|r| {
+            List::from_iter(r.coefs.iter().map(|x| {
+                List::from_pairs([
+                    ("label", x.label().into_robj()),
+                    ("coef", x.coef().into_robj()),
+                    ("se", x.std_err().into_robj()),
+                    ("t", x.t().into_robj()),
+                    ("p", x.p().into_robj()),
+                ])
+            }))
+        }))
+        .into_robj(),
+    )
+    .unwrap();
 
     Ok(df.into_robj())
 }

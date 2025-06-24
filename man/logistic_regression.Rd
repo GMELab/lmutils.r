@@ -6,7 +6,7 @@
 \code{data} is a list of matrix convertible objects.
 \code{outcomes} is a matrix convertible object.
 Returns a data frame with columns \code{slopes}, \code{intercept}, \code{predicted} (if enabled), \code{r2},
-\code{adj_r2}, \code{data}, \code{outcome}, \code{n}, and \code{m}.}
+\code{adj_r2}, \code{data}, \code{outcome}, \code{n}, \code{m}, and \code{coefs}.}
 \usage{
 logistic_regression(data, outcomes)
 }
@@ -15,5 +15,5 @@ Compute a logistic regression between each matrix in a list and each column in a
 \code{data} is a list of matrix convertible objects.
 \code{outcomes} is a matrix convertible object.
 Returns a data frame with columns \code{slopes}, \code{intercept}, \code{predicted} (if enabled), \code{r2},
-\code{adj_r2}, \code{data}, \code{outcome}, \code{n}, and \code{m}.
+\code{adj_r2}, \code{data}, \code{outcome}, \code{n}, \code{m}, and \code{coefs}.
 }

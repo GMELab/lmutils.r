@@ -612,13 +612,20 @@ results <- lmutils::linear_regression(
 Perform a logistic regression between each data element and each outcome column.
 - `data` is a list of matrix convertible objects.
 - `outcomes` is a single matrix convertible object.
-The function returns a list of data frames with columns `slopes`, `intercept`, `r2`, `adj_r2`, `data`, `outcome`, `n`, `m`, and `predicted` (if enabled).
+The function returns a data frame with columns `slopes`, `intercept`, `r2`, `adj_r2`, `data`, `outcome`, `n`, `m`, `predicted` (if enabled), and `coefs`.
+Each model (row) contains a list object in the `coefs` column with a list that contains the coefficients of the model. Each item in the list is another list with fields `label`, `coef`, `se`, `t`, and `p`.
 
 ```r
 results <- lmutils::logistic_regression(
     c("block1.csv", "block2.mat.gz"),
     "outcomes1.RData",
 )
+coefs <- results$coefs[[1]] # results for block1.csv
+coefs[[1]]$label # first column label
+coefs[[1]]$coef # coefficient for the first column
+coefs[[1]]$se # standard error for the first column
+coefs[[1]]$t # t value for the first column
+coefs[[1]]$p # p value for the first column
 ```
 
 # `lmutils::logistic_regression_firth`
@@ -626,7 +633,7 @@ results <- lmutils::logistic_regression(
 Perform a logistic regression with Firth's penalization between each data element and each outcome column
 - `data` is a list of matrix convertible objects.   
 - `outcomes` is a single matrix convertible object.
-The function returns a list of data frames with columns `slopes`, `intercept`, `r2`, `adj_r2`, `r2_tjur`, `data`, `outcome`, `n`, `m`, and `predicted` (if enabled).
+The function returns a list of data frames with columns `slopes`, `intercept`, `r2`, `adj_r2`, `r2_tjur`, `data`, `outcome`, `n`, `m`, `predicted` (if enabled), and `coefs` (see description above).
 
 ```r
 results <- lmutils::logistic_regression_firth(

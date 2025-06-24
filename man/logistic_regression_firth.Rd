@@ -7,7 +7,7 @@
 \code{outcomes} is a matrix convertible object.
 If there is only one outcome, all rows with NA values in that outcome will be removed.
 Returns a data frame with columns \code{slopes}, \code{intercept}, \code{predicted} (if enabled), \code{r2}o,
-\code{adj_r2}, \code{data}, \code{outcome}, \code{n}, and \code{m}.}
+\code{adj_r2}, \code{r2_tjur}, \code{data}, \code{outcome}, \code{n}, \code{m}, and \code{coefs}.}
 \usage{
 logistic_regression_firth(data, outcomes)
 }
@@ -17,5 +17,5 @@ Compute a logistic regression (using Firth's penalization) between each matrix i
 \code{outcomes} is a matrix convertible object.
 If there is only one outcome, all rows with NA values in that outcome will be removed.
 Returns a data frame with columns \code{slopes}, \code{intercept}, \code{predicted} (if enabled), \code{r2}o,
-\code{adj_r2}, \code{data}, \code{outcome}, \code{n}, and \code{m}.
+\code{adj_r2}, \code{r2_tjur}, \code{data}, \code{outcome}, \code{n}, \code{m}, and \code{coefs}.
 }
