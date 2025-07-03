@@ -63,6 +63,29 @@ logistic_regression <- function(data, outcomes) .Call(wrap__logistic_regression,
 #' @export
 logistic_regression_firth <- function(data, outcomes) .Call(wrap__logistic_regression_firth, data, outcomes)
 
+#' Perform a cross validated elastic net regression between each matrix in a list and each column in another
+#' matrix.
+#' `data` is a list of matrix convertible objects.
+#' `outcomes` is a matrix convertible object.
+#' `alpha` is the elastic net mixing parameter (0 for ridge, 1 for lasso).
+#' `nfolds` is the number of folds to use for cross validation.
+#' Returns a data frame with columns `data`, `outcome`, `slopes`, `intercept`, `lambda`, `r2`, and `mse`.
+#' @export
+cv_elnet <- function(data, outcomes, alpha, nfolds) .Call(wrap__cv_elnet, data, outcomes, alpha, nfolds)
+
+#' Perform a cross validated elastic net regression with Firth's penalization between each matrix
+#' in a list and each column in another
+#' matrix.
+#' `data` is a list of matrix convertible objects.
+#' `outcomes` is a matrix convertible object.
+#' `alpha` is the elastic net mixing parameter (0 for ridge, 1 for lasso).
+#' `nfolds` is the number of folds to use for cross validation.
+#' `foldids` is an optional vector of fold ids to use for cross validation.
+#' Returns a data frame with columns `data`, `outcome`, `slopes`, `intercept`, `lambda`, `r2`, and
+#' `mse`.
+#' @export
+cv_elnet_foldids <- function(data, outcomes, alpha, nfolds, foldids) .Call(wrap__cv_elnet_foldids, data, outcomes, alpha, nfolds, foldids)
+
 #' Combine a list of double vectors or matrices into a matrix.
 #' `data` is a list of double vectors or matrices.
 #' `out` is an output file name or `NULL` to return the matrix.

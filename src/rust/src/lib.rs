@@ -950,6 +950,167 @@ fn logistic_regression_inner(data: Robj, outcomes: Robj, firth: bool) -> Result<
     Ok(df.into_robj())
 }
 
+/// Perform a cross validated elastic net regression between each matrix in a list and each column in another
+/// matrix.
+/// `data` is a list of matrix convertible objects.
+/// `outcomes` is a matrix convertible object.
+/// `alpha` is the elastic net mixing parameter (0 for ridge, 1 for lasso).
+/// `nfolds` is the number of folds to use for cross validation.
+/// Returns a data frame with columns `data`, `outcome`, `slopes`, `intercept`, `lambda`, `r2`, and `mse`.
+/// @export
+#[extendr]
+pub fn cv_elnet(data: Robj, outcomes: Robj, alpha: f64, nfolds: usize) -> Result<Robj> {
+    elnet_inner(data, outcomes, alpha, nfolds, None)
+}
+
+/// Perform a cross validated elastic net regression with Firth's penalization between each matrix
+/// in a list and each column in another
+/// matrix.
+/// `data` is a list of matrix convertible objects.
+/// `outcomes` is a matrix convertible object.
+/// `alpha` is the elastic net mixing parameter (0 for ridge, 1 for lasso).
+/// `nfolds` is the number of folds to use for cross validation.
+/// `foldids` is an optional vector of fold ids to use for cross validation.
+/// Returns a data frame with columns `data`, `outcome`, `slopes`, `intercept`, `lambda`, `r2`, and
+/// `mse`.
+/// @export
+#[extendr]
+pub fn cv_elnet_foldids(
+    data: Robj,
+    outcomes: Robj,
+    alpha: f64,
+    nfolds: usize,
+    foldids: Robj,
+) -> Result<Robj> {
+    elnet_inner(
+        data,
+        outcomes,
+        alpha,
+        nfolds,
+        Some(if let Some(slice) = foldids.as_integer_slice() {
+            slice.iter().map(|&x| x as usize).collect::<Vec<_>>()
+        } else if let Some(slice) = foldids.as_real_slice() {
+            slice.iter().map(|&x| x as usize).collect::<Vec<_>>()
+        } else {
+            return Err("foldids must be an integer or real vector".into());
+        }),
+    )
+}
+
+fn elnet_inner(
+    data: Robj,
+    outcomes: Robj,
+    alpha: f64,
+    nfolds: usize,
+    foldids: Option<Vec<usize>>,
+) -> Result<Robj> {
+    init();
+
+    let mut outcomes = matrix(outcomes)?;
+    let mut data = named_matrix_list(data)?;
+    if outcomes.ncols()? == 1 {
+        let col = outcomes.col(0)?.unwrap();
+        // remove rows with NA values in the outcome
+        let mut rows_to_remove = HashSet::new();
+        for (i, value) in col.iter().enumerate() {
+            if value.is_nan() {
+                rows_to_remove.insert(i);
+            }
+        }
+        if rows_to_remove.len() == outcomes.nrows()? {
+            warn!("All rows in the outcome are NA. Returning empty data frame.");
+            return Ok(data_frame!(
+                slopes = Vec::<f64>::new(),
+                intercept = Vec::<f64>::new(),
+                lambda = Vec::<f64>::new(),
+                r2 = Vec::<f64>::new(),
+                mse = Vec::<f64>::new(),
+                data = Vec::<String>::new(),
+                outcome = Vec::<String>::new()
+            ));
+        }
+        outcomes.remove_rows(&rows_to_remove)?;
+        // remove rows from data
+        for (_, mat) in &mut data {
+            mat.t_remove_rows(rows_to_remove.clone());
+        }
+    }
+
+    struct Res {
+        slopes: Vec<f64>,
+        intercept: f64,
+        lambda: f64,
+        r2: f64,
+        mse: f64,
+        data: String,
+        outcome: String,
+    }
+
+    let outcome_names = outcomes
+        .colnames()?
+        .map(|x| x.into_iter().map(|x| x.to_string()).collect::<Vec<_>>());
+    let output_size = data.len() * outcomes.ncols()?;
+    if !outcomes.is_loaded() {
+        outcomes.into_owned()?;
+    }
+    let res = lmutils::core_parallelize::<_, _, _, extendr_api::Error>(
+        data,
+        Some(output_size),
+        move |_, (data_name, data)| {
+            let data = data.as_mat_ref()?;
+            Ok(outcomes
+                .as_mat_ref_loaded()
+                .col_iter()
+                .enumerate()
+                .map(|(i, outcome)| {
+                    let res = lmutils::cv_elnet(
+                        data.as_ref(),
+                        outcome,
+                        alpha,
+                        nfolds,
+                        foldids.as_deref(),
+                        None,
+                        Default::default(),
+                    );
+                    Res {
+                        slopes: res.beta.try_as_col_major().unwrap().as_slice()[..res.beta.nrows()]
+                            .to_vec(),
+                        intercept: res.beta.try_as_col_major().unwrap().as_slice()
+                            [res.beta.nrows() - 1],
+                        lambda: res.lambda,
+                        r2: res.r2,
+                        mse: res.mse,
+                        data: data_name.clone(),
+                        outcome: outcome_names
+                            .as_deref()
+                            .map(|x| x[i].to_string())
+                            .unwrap_or_else(|| (i + 1).to_string()),
+                    }
+                })
+                .collect::<Vec<_>>())
+        },
+    )
+    .into_iter()
+    .flatten()
+    .collect::<Vec<_>>();
+
+    let mut df = data_frame!(
+        slopes = res.iter().map(|_| 0).collect_robj(),
+        intercept = res.iter().map(|r| r.intercept).collect_robj(),
+        lambda = res.iter().map(|r| r.lambda).collect_robj(),
+        r2 = res.iter().map(|r| r.r2).collect_robj(),
+        mse = res.iter().map(|r| r.mse).collect_robj(),
+        data = res.iter().map(|r| r.data.clone()).collect_robj(),
+        outcome = res.iter().map(|r| r.outcome.clone()).collect_robj()
+    )
+    .as_list()
+    .unwrap();
+    // due to some weird stuff with the macro, we have to set the vector columns manually
+    let slopes = List::from_values(res.iter().map(|r| &r.slopes)).into_robj();
+    df.set_elt(0, slopes).unwrap();
+    Ok(df.into_robj())
+}
+
 /// Combine a list of double vectors or matrices into a matrix.
 /// `data` is a list of double vectors or matrices.
 /// `out` is an output file name or `NULL` to return the matrix.
@@ -2164,6 +2325,8 @@ extendr_module! {
     fn linear_regression;
     fn logistic_regression;
     fn logistic_regression_firth;
+    fn cv_elnet;
+    fn cv_elnet_foldids;
     fn combine_vectors;
     fn combine_rows;
     fn remove_rows;
