@@ -1053,6 +1053,19 @@ fn elnet_inner(
     if !outcomes.is_loaded() {
         outcomes.into_owned()?;
     }
+    let foldids = match foldids {
+        Some(foldids) => {
+            if foldids.iter().any(|&x| x > nfolds || x == 0) {
+                return Err(format!(
+                    "foldids must be in the range [1, {}], got: {:?}",
+                    nfolds, foldids
+                )
+                .into());
+            }
+            Some(foldids.into_iter().map(|x| x - 1).collect::<Vec<_>>())
+        }
+        None => None,
+    };
     let res = lmutils::core_parallelize::<_, _, _, extendr_api::Error>(
         data,
         Some(output_size),
