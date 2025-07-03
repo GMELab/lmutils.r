@@ -55,6 +55,9 @@
   - [`lmutils::column_p_values`](#lmutilscolumn_p_values)
   - [`lmutils::linear_regression`](#lmutilslinear_regression)
   - [`lmutils::logistic_regression`](#lmutilslogistic_regression)
+  - [`lmutils::logistic_regression_firth`](#lmutilslogistic_regression_firth)
+  - [`lmutils::cv_elnet`](#lmutilscv_elnet)
+  - [`lmutils::cv_elnet_foldids`](#lmutilscv_elnet_foldids)
   - [`lmutils::combine_vectors`](#lmutilscombine_vectors)
   - [`lmutils::combine_rows`](#lmutilscombine_rows)
   - [`lmutils::remove_rows`](#lmutilsremove_rows)
@@ -639,6 +642,43 @@ The function returns a list of data frames with columns `slopes`, `intercept`, `
 results <- lmutils::logistic_regression_firth(
     c("block1.csv", "block2.mat.gz"),
     "outcomes1.RData",
+)
+```
+
+### `lmutils::cv_elnet`
+
+Performs cross-validated elastic net regression between each data element and each outcome column.
+- `data` is a list of matrix convertible objects.
+- `outcomes` is a single matrix convertible object.
+- `alpha` is a numeric value between 0 and 1, where 0 is ridge regression, 1 is lasso regression, and values in between are elastic net.
+- `nfolds` is the number of folds to use for cross-validation.
+The function returns a data frame with columns `slopes`, `intercept`, `lambda`, `r2`, `mse`, `data`, and `outcome`.
+
+```r
+results <- lmutils::cv_elnet(
+    c("block1.csv", "block2.mat.gz"),
+    "outcomes1.RData",
+    1, # alpha, 0 for ridge, 1 for lasso, in between for elastic net
+    5, # number of folds
+)
+```
+
+### `lmutils::cv_elnet_foldids`
+
+Performs cross-validated elastic net regression between each data element and each outcome column, using pre-defined fold IDs.
+- `data` is a list of matrix convertible objects.
+- `outcomes` is a single matrix convertible object.
+- `alpha` is a numeric value between 0 and 1, where 0 is ridge regression, 1 is lasso regression, and values in between are elastic net.
+- `nfolds` is the number of folds to use for cross-validation.
+- `foldids` is a numeric vector of fold IDs, where each element is which fold the corresponding row belongs to.
+
+```r
+results <- lmutils::cv_elnet_foldids(
+    c("block1.csv", "block2.mat.gz"),
+    "outcomes1.RData",
+    1, # alpha, 0 for ridge, 1 for lasso, in between for elastic net
+    5, # number of folds
+    c(5, 3, 1, 2, 4, 2, 1, 3, 4, 5) # fold IDs for each row
 )
 ```
 
