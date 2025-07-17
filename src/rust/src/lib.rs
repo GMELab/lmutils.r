@@ -717,6 +717,7 @@ pub fn linear_regression(data: Robj, outcomes: Robj) -> Result<Robj> {
         outcome: String,
         n: usize,
         m: usize,
+        coefs: Vec<lmutils::Coef>,
     }
 
     let outcome_names = outcomes
@@ -736,13 +737,13 @@ pub fn linear_regression(data: Robj, outcomes: Robj) -> Result<Robj> {
                 .col_iter()
                 .enumerate()
                 .map(|(i, outcome)| {
-                    let res = lmutils::linear_regression(
+                    let res = lmutils::Lm::fit(
                         data.as_ref(),
                         outcome.try_as_col_major().unwrap().as_slice(),
                     );
                     Res {
-                        slopes: res.slopes().to_vec(),
-                        intercept: res.intercept(),
+                        slopes: res.slopes().iter().map(|x| x.coef()).collect::<Vec<_>>(),
+                        intercept: res.intercept().coef(),
                         predicted: res.predicted().to_vec(),
                         r2: res.r2(),
                         adj_r2: res.adj_r2(),
@@ -753,6 +754,7 @@ pub fn linear_regression(data: Robj, outcomes: Robj) -> Result<Robj> {
                             .unwrap_or_else(|| (i + 1).to_string()),
                         n: data.nrows(),
                         m: data.ncols(),
+                        coefs: res.coefs().to_vec(),
                     }
                 })
                 .collect::<Vec<_>>())
@@ -771,7 +773,8 @@ pub fn linear_regression(data: Robj, outcomes: Robj) -> Result<Robj> {
         data = res.iter().map(|r| r.data.clone()).collect_robj(),
         outcome = res.iter().map(|r| r.outcome.clone()).collect_robj(),
         n = res.iter().map(|r| r.n).collect_robj(),
-        m = res.iter().map(|r| r.m).collect_robj()
+        m = res.iter().map(|r| r.m).collect_robj(),
+        coefs = res.iter().map(|_| 0).collect_robj()
     )
     .as_list()
     .unwrap();
@@ -780,6 +783,22 @@ pub fn linear_regression(data: Robj, outcomes: Robj) -> Result<Robj> {
     let predicted = List::from_values(res.iter().map(|r| &r.predicted)).into_robj();
     df.set_elt(0, slopes).unwrap();
     df.set_elt(2, predicted).unwrap();
+    df.set_elt(
+        10,
+        List::from_iter(res.iter().map(|r| {
+            List::from_iter(r.coefs.iter().map(|x| {
+                List::from_pairs([
+                    ("label", x.label().into_robj()),
+                    ("coef", x.coef().into_robj()),
+                    ("se", x.std_err().into_robj()),
+                    ("t", x.t().into_robj()),
+                    ("p", x.p().into_robj()),
+                ])
+            }))
+        }))
+        .into_robj(),
+    )
+    .unwrap();
 
     Ok(df.into_robj())
 }
