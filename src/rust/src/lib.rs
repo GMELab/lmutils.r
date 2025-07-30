@@ -853,7 +853,8 @@ fn logistic_regression_inner(data: Robj, outcomes: Robj, firth: bool) -> Result<
                 outcome = Vec::<String>::new(),
                 n = Vec::<usize>::new(),
                 m = Vec::<usize>::new(),
-                coefs = List::new(0)
+                coefs = List::new(0),
+                aic = Vec::<f64>::new()
             ));
         }
         outcomes.remove_rows(&rows_to_remove)?;
@@ -875,6 +876,7 @@ fn logistic_regression_inner(data: Robj, outcomes: Robj, firth: bool) -> Result<
         n: usize,
         m: usize,
         coefs: Vec<lmutils::Coef>,
+        aic: f64,
     }
 
     let outcome_names = outcomes
@@ -920,6 +922,7 @@ fn logistic_regression_inner(data: Robj, outcomes: Robj, firth: bool) -> Result<
                         n: data.nrows(),
                         m: data.ncols(),
                         coefs: res.coefs().to_vec(),
+                        aic: res.aic(),
                     }
                 })
                 .collect::<Vec<_>>())
@@ -940,7 +943,8 @@ fn logistic_regression_inner(data: Robj, outcomes: Robj, firth: bool) -> Result<
         outcome = res.iter().map(|r| r.outcome.clone()).collect_robj(),
         n = res.iter().map(|r| r.n).collect_robj(),
         m = res.iter().map(|r| r.m).collect_robj(),
-        coefs = res.iter().map(|_| 0).collect_robj()
+        coefs = res.iter().map(|_| 0).collect_robj(),
+        aic = res.iter().map(|r| r.aic).collect_robj()
     )
     .as_list()
     .unwrap();
