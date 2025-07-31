@@ -811,7 +811,18 @@ pub fn linear_regression(data: Robj, outcomes: Robj) -> Result<Robj> {
 /// @export
 #[extendr]
 pub fn logistic_regression(data: Robj, outcomes: Robj) -> Result<Robj> {
-    logistic_regression_inner(data, outcomes, false)
+    logistic_regression_inner(data, outcomes, true, false)
+}
+
+/// Compute a logistic regression between each matrix in a list and each column in another matrix.
+/// `data` is a list of matrix convertible objects.
+/// `outcomes` is a matrix convertible object.
+/// Returns a data frame with columns `slopes`, `intercept`, `predicted` (if enabled), `r2`,
+/// `adj_r2`, `data`, `outcome`, `n`, `m`, and `coefs`.
+/// @export
+#[extendr]
+pub fn logistic_regression_no_intercept(data: Robj, outcomes: Robj) -> Result<Robj> {
+    logistic_regression_inner(data, outcomes, false, false)
 }
 
 /// Compute a logistic regression (using Firth's penalization) between each matrix in a list and each column in another matrix.
@@ -823,10 +834,15 @@ pub fn logistic_regression(data: Robj, outcomes: Robj) -> Result<Robj> {
 /// @export
 #[extendr]
 pub fn logistic_regression_firth(data: Robj, outcomes: Robj) -> Result<Robj> {
-    logistic_regression_inner(data, outcomes, true)
+    logistic_regression_inner(data, outcomes, true, true)
 }
 
-fn logistic_regression_inner(data: Robj, outcomes: Robj, firth: bool) -> Result<Robj> {
+fn logistic_regression_inner(
+    data: Robj,
+    outcomes: Robj,
+    add_intercept: bool,
+    firth: bool,
+) -> Result<Robj> {
     init();
 
     let mut outcomes = matrix(outcomes)?;
@@ -913,6 +929,7 @@ fn logistic_regression_inner(data: Robj, outcomes: Robj, firth: bool) -> Result<
                             .ok()
                             .and_then(|x| x.parse::<usize>().ok())
                             .unwrap_or(100),
+                        add_intercept,
                         firth,
                         colnames.as_deref(),
                     );
@@ -2372,6 +2389,7 @@ extendr_module! {
     fn column_p_values;
     fn linear_regression;
     fn logistic_regression;
+    fn logistic_regression_no_intercept;
     fn logistic_regression_firth;
     fn cv_elnet;
     fn cv_elnet_foldids;
