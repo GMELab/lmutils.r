@@ -830,7 +830,14 @@ fn logistic_regression_inner(data: Robj, outcomes: Robj, firth: bool) -> Result<
     init();
 
     let mut outcomes = matrix(outcomes)?;
-    let mut data = named_matrix_list(data)?;
+    let mut data = if data.is_null() {
+        vec![(
+            "null".to_string(),
+            lmutils::OwnedMatrix::new(outcomes.nrows()?, 0, Vec::new(), None).into_matrix(),
+        )]
+    } else {
+        named_matrix_list(data)?
+    };
     if outcomes.ncols()? == 1 {
         let col = outcomes.col(0)?.unwrap();
         // remove rows with NA values in the outcome
@@ -854,7 +861,8 @@ fn logistic_regression_inner(data: Robj, outcomes: Robj, firth: bool) -> Result<
                 n = Vec::<usize>::new(),
                 m = Vec::<usize>::new(),
                 coefs = List::new(0),
-                aic = Vec::<f64>::new()
+                aic = Vec::<f64>::new(),
+                weights = Vec::<f64>::new()
             ));
         }
         outcomes.remove_rows(&rows_to_remove)?;
@@ -877,6 +885,7 @@ fn logistic_regression_inner(data: Robj, outcomes: Robj, firth: bool) -> Result<
         m: usize,
         coefs: Vec<lmutils::Coef>,
         aic: f64,
+        weights: Vec<f64>,
     }
 
     let outcome_names = outcomes
@@ -923,6 +932,7 @@ fn logistic_regression_inner(data: Robj, outcomes: Robj, firth: bool) -> Result<
                         m: data.ncols(),
                         coefs: res.coefs().to_vec(),
                         aic: res.aic(),
+                        weights: res.weights().to_vec(),
                     }
                 })
                 .collect::<Vec<_>>())
@@ -944,13 +954,15 @@ fn logistic_regression_inner(data: Robj, outcomes: Robj, firth: bool) -> Result<
         n = res.iter().map(|r| r.n).collect_robj(),
         m = res.iter().map(|r| r.m).collect_robj(),
         coefs = res.iter().map(|_| 0).collect_robj(),
-        aic = res.iter().map(|r| r.aic).collect_robj()
+        aic = res.iter().map(|r| r.aic).collect_robj(),
+        weights = res.iter().map(|_| 0).collect_robj()
     )
     .as_list()
     .unwrap();
     // due to some weird stuff with the macro, we have to set the vector columns manually
     let slopes = List::from_values(res.iter().map(|r| &r.slopes)).into_robj();
     let predicted = List::from_values(res.iter().map(|r| &r.predicted)).into_robj();
+    let weights = List::from_values(res.iter().map(|r| &r.weights)).into_robj();
     df.set_elt(0, slopes).unwrap();
     df.set_elt(2, predicted).unwrap();
     df.set_elt(
@@ -969,6 +981,7 @@ fn logistic_regression_inner(data: Robj, outcomes: Robj, firth: bool) -> Result<
         .into_robj(),
     )
     .unwrap();
+    df.set_elt(12, weights).unwrap();
 
     Ok(df.into_robj())
 }
@@ -1080,8 +1093,7 @@ fn elnet_inner(
         Some(foldids) => {
             if foldids.iter().any(|&x| x > nfolds || x == 0) {
                 return Err(format!(
-                    "foldids must be in the range [1, {}], got: {:?}",
-                    nfolds, foldids
+                    "foldids must be in the range [1, {nfolds}], got: {foldids:?}",
                 )
                 .into());
             }
