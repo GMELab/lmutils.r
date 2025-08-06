@@ -101,6 +101,7 @@ cv_elnet_foldids <- function(data, outcomes, alpha, nfolds, foldids) .Call(wrap_
 #' `direction` is either 'forward', 'backward', or 'both' to indicate the direction of the stepwise selection.
 #' Returns a list object with fields `slopes`, `intercept`, `predicted`, `r2`, `adj_r2`, `aic`,
 #' and `coefs`.
+#' @export
 step_aic <- function(data, outcomes, from, direction) .Call(wrap__step_aic, data, outcomes, from, direction)
 
 #' Combine a list of double vectors or matrices into a matrix.
