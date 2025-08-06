@@ -1183,6 +1183,7 @@ fn elnet_inner(
 /// `direction` is either 'forward', 'backward', or 'both' to indicate the direction of the stepwise selection.
 /// Returns a list object with fields `slopes`, `intercept`, `predicted`, `r2`, `adj_r2`, `aic`,
 /// and `coefs`.
+/// @export
 #[extendr]
 pub fn step_aic(data: Robj, outcomes: &[f64], from: &str, direction: &str) -> Result<List> {
     init();
