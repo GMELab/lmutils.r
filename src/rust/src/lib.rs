@@ -1176,6 +1176,70 @@ fn elnet_inner(
     Ok(df.into_robj())
 }
 
+/// Perform stepwise selection of a logistic regression model using AIC.
+/// `data` a single matrix convertible object as the design matrix. It must have column names.
+/// `outcomes` is a double vector containing the binary outcomes.
+/// `from` either 'null' or 'full' to indicate whether to start from a null model or a full model.
+/// `direction` is either 'forward', 'backward', or 'both' to indicate the direction of the stepwise selection.
+/// Returns a list object with fields `slopes`, `intercept`, `predicted`, `r2`, `adj_r2`, `aic`,
+/// and `coefs`.
+#[extendr]
+pub fn step_aic(data: Robj, outcomes: &[f64], from: &str, direction: &str) -> Result<List> {
+    init();
+
+    let mut data = matrix(data)?;
+    if !data.is_loaded() {
+        data.into_owned()?;
+    }
+    if data.ncols()? == 0 {
+        return Err("data must have at least one column".into());
+    }
+    if outcomes.len() != data.nrows()? {
+        return Err("outcomes must have the same length as the number of rows in data".into());
+    }
+    let from = match from {
+        "null" => lmutils::From::Null,
+        "full" => lmutils::From::Full,
+        _ => return Err("from must be either 'null' or 'full'".into()),
+    };
+    let direction = match direction {
+        "forward" => lmutils::Direction::Forward,
+        "backward" => lmutils::Direction::Backward,
+        "both" => lmutils::Direction::Both,
+        _ => return Err("direction must be either 'forward', 'backward', or 'both'".into()),
+    };
+    let res =
+        lmutils::step_aic::<lmutils::family::BinomialLogit>(data, outcomes, from, direction, 1000)?;
+    Ok(List::from_pairs([
+        (
+            "slopes",
+            res.slopes()
+                .iter()
+                .map(|x| x.coef())
+                .collect::<Vec<_>>()
+                .into_robj(),
+        ),
+        ("intercept", res.intercept().coef().into_robj()),
+        ("predicted", res.predicted().into_robj()),
+        ("r2", res.r2().into_robj()),
+        ("adj_r2", res.adj_r2().into_robj()),
+        ("aic", res.aic().into_robj()),
+        (
+            "coefs",
+            List::from_iter(res.coefs().iter().map(|x| {
+                List::from_pairs([
+                    ("label", x.label().into_robj()),
+                    ("coef", x.coef().into_robj()),
+                    ("se", x.std_err().into_robj()),
+                    ("t", x.t().into_robj()),
+                    ("p", x.p().into_robj()),
+                ])
+            }))
+            .into_robj(),
+        ),
+    ]))
+}
+
 /// Combine a list of double vectors or matrices into a matrix.
 /// `data` is a list of double vectors or matrices.
 /// `out` is an output file name or `NULL` to return the matrix.
@@ -2393,6 +2457,7 @@ extendr_module! {
     fn logistic_regression_firth;
     fn cv_elnet;
     fn cv_elnet_foldids;
+    fn step_aic;
     fn combine_vectors;
     fn combine_rows;
     fn remove_rows;

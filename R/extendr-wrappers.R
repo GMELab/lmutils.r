@@ -94,6 +94,15 @@ cv_elnet <- function(data, outcomes, alpha, nfolds) .Call(wrap__cv_elnet, data, 
 #' @export
 cv_elnet_foldids <- function(data, outcomes, alpha, nfolds, foldids) .Call(wrap__cv_elnet_foldids, data, outcomes, alpha, nfolds, foldids)
 
+#' Perform stepwise selection of a logistic regression model using AIC.
+#' `data` a single matrix convertible object as the design matrix. It must have column names.
+#' `outcomes` is a double vector containing the binary outcomes.
+#' `from` either 'null' or 'full' to indicate whether to start from a null model or a full model.
+#' `direction` is either 'forward', 'backward', or 'both' to indicate the direction of the stepwise selection.
+#' Returns a list object with fields `slopes`, `intercept`, `predicted`, `r2`, `adj_r2`, `aic`,
+#' and `coefs`.
+step_aic <- function(data, outcomes, from, direction) .Call(wrap__step_aic, data, outcomes, from, direction)
+
 #' Combine a list of double vectors or matrices into a matrix.
 #' `data` is a list of double vectors or matrices.
 #' `out` is an output file name or `NULL` to return the matrix.
