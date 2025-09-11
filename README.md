@@ -59,6 +59,7 @@
   - [`lmutils::cv_elnet`](#lmutilscv_elnet)
   - [`lmutils::cv_elnet_foldids`](#lmutilscv_elnet_foldids)
   - [`lmutils::step_aic`](#lmutilsstep_aic)
+  - [`lmutils::ld_prune`](#lmutilsld_prune)
   - [`lmutils::combine_vectors`](#lmutilscombine_vectors)
   - [`lmutils::combine_rows`](#lmutilscombine_rows)
   - [`lmutils::remove_rows`](#lmutilsremove_rows)
