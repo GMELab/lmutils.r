@@ -58,6 +58,7 @@
   - [`lmutils::logistic_regression_firth`](#lmutilslogistic_regression_firth)
   - [`lmutils::cv_elnet`](#lmutilscv_elnet)
   - [`lmutils::cv_elnet_foldids`](#lmutilscv_elnet_foldids)
+  - [`lmutils::step_aic`](#lmutilsstep_aic)
   - [`lmutils::combine_vectors`](#lmutilscombine_vectors)
   - [`lmutils::combine_rows`](#lmutilscombine_rows)
   - [`lmutils::remove_rows`](#lmutilsremove_rows)
@@ -112,6 +113,7 @@ All files can be optionally compressed with `gzip`, `rdata` files are assumed to
 - `.rkyv`
 - `.rdata`
 - `.rds`
+- `.bed` (requires a corresponding `.bim` and `.fam` file, `lmutils` does not support writing to `.bed` files)
 
 ## Introduction
 
@@ -679,6 +681,45 @@ results <- lmutils::cv_elnet_foldids(
     1, # alpha, 0 for ridge, 1 for lasso, in between for elastic net
     5, # number of folds
     c(5, 3, 1, 2, 4, 2, 1, 3, 4, 5) # fold IDs for each row
+)
+```
+
+### `lmutils::step_aic`
+
+Performs stepwise feature selection of a logistic regression model by AIC.
+- `data` is a matrix convertible object. It must have column names.
+- `outcomes` is a numeric vector of binary outcomes (0 or 1).
+- `from` is a string indicating the starting model. It can be "full" (all columns) or "null" (intercept only).
+- `direction` is a string indicating the direction of the stepwise selection. It can be "both", "backward", or "forward".
+Returns a list object with fields `slopes`, `intercept`, `r2`, `adj_r2`, `aic`, and `coefs`.
+
+```r
+results <- lmutils::step_aic(
+    "matrix1.csv",
+    c(0, 1, 0, 1, 0, 1, 0, 1, 0, 1),
+    "null", # "full" or "null"
+    "both", # "both", "backward", or "forward"
+)
+```
+
+### `lmutils::ld_prune`
+
+Perform 100% plink 1.9 compatible LD pruning on the provided bed file.
+- `bed` is the path to the bed file.
+- `window_size` is the size of the window in base pairs.
+- `step_size` is the number of variants to step between windows.
+- `threshold` is the R^2 threshold above which variants will be pruned.
+This function returns a list object with three fields:
+- `pruned`: the number of variants pruned.
+- `prune_in`: a vector of variant IDs that were kept.
+- `prune_out`: a vector of variant IDs that were pruned.
+
+```r
+results <- lmutils::ld_prune(
+    "genotypes.bed",
+    50000, # window size in base pairs
+    1000,  # step size in variants
+    0.01,  # R^2 threshold
 )
 ```
 

@@ -1241,6 +1241,29 @@ pub fn step_aic(data: Robj, outcomes: &[f64], from: &str, direction: &str) -> Re
     ]))
 }
 
+/// Perform 100% plink 1.9 compatible LD pruning on the provided bed file.
+/// - `bed` is path to the bed file.
+/// - `window_size` is the size of the window in base pairs.
+/// - `step_size` is the number of variants to step between windows.
+/// - `threshold` is the R^2 threshold above which variants will be pruned.
+/// This function returns a list object with three fields:
+/// - `pruned`: the number of variants pruned.
+/// - `prune_in`: a vector of variant IDs that were kept.
+/// - `prune_out`: a vector of variant IDs that were pruned.
+/// @export
+#[extendr]
+pub fn ld_prune(bed: &str, window_size: usize, step_size: usize, threshold: f64) -> Result<List> {
+    init();
+
+    let dataset = lmutils::ld::PlinkDataset::read(bed.into())?;
+    let result = dataset.ld_prune(window_size, step_size, threshold);
+    Ok(List::from_pairs([
+        ("pruned", result.pruned.into_robj()),
+        ("prune_in", result.prune_in.into_robj()),
+        ("prune_out", result.prune_out.into_robj()),
+    ]))
+}
+
 /// Combine a list of double vectors or matrices into a matrix.
 /// `data` is a list of double vectors or matrices.
 /// `out` is an output file name or `NULL` to return the matrix.
@@ -2459,6 +2482,7 @@ extendr_module! {
     fn cv_elnet;
     fn cv_elnet_foldids;
     fn step_aic;
+    fn ld_prune;
     fn combine_vectors;
     fn combine_rows;
     fn remove_rows;

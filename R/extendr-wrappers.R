@@ -104,6 +104,18 @@ cv_elnet_foldids <- function(data, outcomes, alpha, nfolds, foldids) .Call(wrap_
 #' @export
 step_aic <- function(data, outcomes, from, direction) .Call(wrap__step_aic, data, outcomes, from, direction)
 
+#' Perform 100% plink 1.9 compatible LD pruning on the provided bed file.
+#' - `bed` is path to the bed file.
+#' - `window_size` is the size of the window in base pairs.
+#' - `step_size` is the number of variants to step between windows.
+#' - `threshold` is the R^2 threshold above which variants will be pruned.
+#' This function returns a list object with three fields:
+#' - `pruned`: the number of variants pruned.
+#' - `prune_in`: a vector of variant IDs that were kept.
+#' - `prune_out`: a vector of variant IDs that were pruned.
+#' @export
+ld_prune <- function(bed, window_size, step_size, threshold) .Call(wrap__ld_prune, bed, window_size, step_size, threshold)
+
 #' Combine a list of double vectors or matrices into a matrix.
 #' `data` is a list of double vectors or matrices.
 #' `out` is an output file name or `NULL` to return the matrix.
