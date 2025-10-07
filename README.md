@@ -634,7 +634,7 @@ coefs[[1]]$t # t value for the first column
 coefs[[1]]$p # p value for the first column
 ```
 
-# `lmutils::logistic_regression_firth`
+### `lmutils::logistic_regression_firth`
 
 Perform a logistic regression with Firth's penalization between each data element and each outcome column
 - `data` is a list of matrix convertible objects.   
