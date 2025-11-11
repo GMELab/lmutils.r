@@ -730,9 +730,9 @@ pub fn linear_regression(data: Robj, outcomes: Robj) -> Result<Robj> {
     let res = lmutils::core_parallelize::<_, _, _, extendr_api::Error>(
         data,
         Some(output_size),
-        |_, (data_name, data)| {
-            let data = data.as_mat_ref()?;
-            Ok(outcomes
+        |_, (data_name, mat)| {
+            let data = mat.as_mat_ref()?;
+            let res = outcomes
                 .as_mat_ref_loaded()
                 .col_iter()
                 .enumerate()
@@ -757,7 +757,9 @@ pub fn linear_regression(data: Robj, outcomes: Robj) -> Result<Robj> {
                         coefs: res.coefs().to_vec(),
                     }
                 })
-                .collect::<Vec<_>>())
+                .collect::<Vec<_>>();
+            mat.unload();
+            Ok(res)
         },
     )
     .into_iter()
@@ -911,12 +913,12 @@ fn logistic_regression_inner(
     let res = lmutils::core_parallelize::<_, _, _, extendr_api::Error>(
         data,
         Some(output_size),
-        |_, (data_name, data)| {
-            let colnames = data
+        |_, (data_name, mat)| {
+            let colnames = mat
                 .colnames()?
                 .map(|x| x.into_iter().map(|x| x.to_string()).collect::<Vec<_>>());
-            let data = data.as_mat_ref()?;
-            Ok(outcomes
+            let data = mat.as_mat_ref()?;
+            let res = outcomes
                 .as_mat_ref_loaded()
                 .col_iter()
                 .enumerate()
@@ -952,7 +954,9 @@ fn logistic_regression_inner(
                         weights: res.weights().to_vec(),
                     }
                 })
-                .collect::<Vec<_>>())
+                .collect::<Vec<_>>();
+            mat.unload();
+            Ok(res)
         },
     )
     .into_iter()
@@ -1121,9 +1125,9 @@ fn elnet_inner(
     let res = lmutils::core_parallelize::<_, _, _, extendr_api::Error>(
         data,
         Some(output_size),
-        move |_, (data_name, data)| {
-            let data = data.as_mat_ref()?;
-            Ok(outcomes
+        move |_, (data_name, mat)| {
+            let data = mat.as_mat_ref()?;
+            let res = outcomes
                 .as_mat_ref_loaded()
                 .col_iter()
                 .enumerate()
@@ -1152,7 +1156,9 @@ fn elnet_inner(
                             .unwrap_or_else(|| (i + 1).to_string()),
                     }
                 })
-                .collect::<Vec<_>>())
+                .collect::<Vec<_>>();
+            mat.unload();
+            Ok(res)
         },
     )
     .into_iter()
