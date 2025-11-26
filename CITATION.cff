@@ -1,0 +1,19 @@
+cff-version: 1.2.0
+title: lmutils
+message: >-
+  If you use this software, please cite it using the
+  metadata from this file.
+type: software
+authors:
+  - given-names: Josef
+    family-names: Graf
+    email: josef@mrvillage.dev
+    orcid: 'https://orcid.org/0009-0001-5530-6790'
+repository-code: 'https://github.com/GMELab/lmutils.r'
+url: 'https://github.com/GMELab/lmutils.r'
+abstract: Tools for blazingly fast statistical analysis in R
+keywords:
+  - linear algebra
+  - statistics
+  - bioinformatics
+license: MIT
