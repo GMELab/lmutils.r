@@ -786,7 +786,7 @@ pub fn linear_regression(data: Robj, outcomes: Robj) -> Result<Robj> {
     df.set_elt(0, slopes).unwrap();
     df.set_elt(2, predicted).unwrap();
     df.set_elt(
-        10,
+        9,
         List::from_iter(res.iter().map(|r| {
             List::from_iter(r.coefs.iter().map(|x| {
                 List::from_pairs([
