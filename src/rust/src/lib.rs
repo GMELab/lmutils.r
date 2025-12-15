@@ -619,15 +619,17 @@ pub fn calculate_r2(data: Robj, outcomes: Robj) -> Result<Robj> {
         outcome = res.iter().map(|r| r.outcome()).collect_robj(),
         n = res.iter().map(|r| r.n()).collect_robj(),
         m = res.iter().map(|r| r.m()).collect_robj(),
-        predicted = res.iter().map(|_| 0).collect_robj()
+        predicted = res.iter().map(|_| 0).collect_robj(),
+        betas = res.iter().map(|_| 0).collect_robj()
     )
     .as_list()
     .unwrap();
 
     // due to some weird stuff with the macro, we have to set the last column manually
     let predicted = List::from_values(res.iter().map(|r| r.predicted())).into_robj();
-    let ncols = df.len();
-    df.set_elt(ncols - 1, predicted).unwrap();
+    df.set_elt(6, predicted).unwrap();
+    let betas = List::from_values(res.iter().map(|r| r.betas())).into_robj();
+    df.set_elt(7, betas).unwrap();
 
     Ok(df.into_robj())
 }

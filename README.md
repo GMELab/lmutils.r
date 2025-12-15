@@ -576,7 +576,7 @@ lmutils::save_dir(
 Calculates the R^2 and adjusted R^2 values for blocks and outcomes.
 - `data` is a list of matrix convertible objects.
 - `outcomes` is a single matrix convertible object.
-Returns a data frame with columns `r2`, `adj_r2`, `data`, `outcome`, `n`, `m`, and `predicted`.
+Returns a data frame with columns `r2`, `adj_r2`, `data`, `outcome`, `n`, `m`, `predicted`, and `betas`.
 
 ```r
 results <- lmutils::calculate_r2(
